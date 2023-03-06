@@ -2,7 +2,7 @@ use core::{mem, ptr};
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::NonNull;
 
-use crate::nub::allocator::Locked;
+use crate::kernel::allocator::Locked;
 
 /// List Node
 struct ListNode {

@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
-#![test_runner(asm_os::util::serene_test_runner)]
+#![test_runner(asm_os::helper::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
@@ -13,8 +13,8 @@ use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
 
 use asm_os::{hlt_loop, init};
-use asm_os::nub::allocator::HEAP_SIZE;
-use asm_os::util::serene_test_panic_handler;
+use asm_os::helper::testing::serene_test_panic_handler;
+use asm_os::kernel::allocator::HEAP_SIZE;
 
 entry_point!(main);
 

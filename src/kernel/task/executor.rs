@@ -4,9 +4,9 @@ use alloc::task::Wake;
 use core::task::{Context, Poll, Waker};
 
 use crossbeam_queue::ArrayQueue;
-use x86_64::instructions::interrupts;
+use x86_64::instructions;
 
-use crate::nub::task::{Task, TaskId};
+use crate::kernel::task::{Task, TaskId};
 
 /// Size of waiting queue for tasks.
 pub const QUEUE_SIZE: usize = 128;
@@ -72,11 +72,11 @@ impl Executor {
 
     /// Halts the CPU if there are no tasks.
     fn sleep_if_idle(&self) {
-        interrupts::disable();
+        instructions::interrupts::disable();
         if self.task_queue.is_empty() {
-            interrupts::enable_and_hlt();
+            instructions::interrupts::enable_and_hlt();
         } else {
-            interrupts::enable();
+            instructions::interrupts::enable();
         }
     }
 }

@@ -1,7 +1,7 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr;
 
-use crate::nub::allocator::{align_up, Locked};
+use crate::kernel::allocator::{align_up, Locked};
 
 /// Bump Allocator
 pub struct BumpAllocator {

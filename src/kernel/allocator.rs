@@ -5,12 +5,15 @@ use x86_64::structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, S
 use x86_64::structures::paging::mapper::MapToError;
 use x86_64::VirtAddr;
 
-use crate::nub::allocator::pool_allocator::PoolAllocator;
-use crate::util::Unit;
+pub use bump::BumpAllocator;
+pub use linked_list::LinkedListAllocator;
+pub use pool::PoolAllocator;
 
-pub mod bump;
-pub mod free_list;
-pub mod pool_allocator;
+use crate::helper::units::Unit;
+
+mod bump;
+mod linked_list;
+mod pool;
 
 /// Locked
 pub struct Locked<A> {

@@ -6,7 +6,7 @@
 #![feature(custom_test_frameworks)]
 #![feature(poll_ready)]
 #![feature(exclusive_range_pattern)]
-#![test_runner(crate::util::serene_test_runner)]
+#![test_runner(crate::helper::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
@@ -19,14 +19,13 @@ use bootloader::BootInfo;
 use bootloader::entry_point;
 use x86_64::{instructions, VirtAddr};
 
-use crate::nub::{allocator, gdt, interrupts, memory, vga_buffer};
 #[cfg(test)]
-use crate::util::serene_test_panic_handler;
-use crate::util::Unit;
+use crate::helper::testing::serene_test_panic_handler;
+use crate::helper::units::Unit;
+use crate::kernel::{allocator, gdt, interrupts, memory, vga_buffer};
 
-pub mod emul;
-pub mod nub;
-pub mod util;
+pub mod helper;
+pub mod kernel;
 
 #[cfg(test)]
 entry_point!(test_kernel_main);

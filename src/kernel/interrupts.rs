@@ -6,8 +6,8 @@ use x86_64::instructions;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{gdt, hlt_loop, println};
-use crate::nub::task;
+use crate::{hlt_loop, println};
+use crate::kernel::{gdt, task};
 
 /// 8259 PIC
 ///

@@ -5,7 +5,7 @@ use x86_64::instructions::tables::load_tss;
 use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 
-use crate::nub::memory;
+use crate::kernel::memory;
 
 /// Index of stack for double fault exceptions in the IST.
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;

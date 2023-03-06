@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 use x86_64::instructions;
+use x86_64::instructions::port::Port;
 
 // VGA BUFFER
 //
@@ -24,8 +25,9 @@ use x86_64::instructions;
 lazy_static! {
     // Global Interface for writing to VGA Buffer.
     static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        row_pos: 0,
         col_pos: 0,
-        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        color_code: ColorCode::new(Color::LightGray, Color::Black),
         buffer: unsafe { &mut *(ADDRESS as *mut Buffer) },
     });
 }
@@ -127,6 +129,7 @@ struct Buffer {
 /// A writer for writing to the VGA buffer, which is then rendered to the screen.
 struct Writer {
     col_pos: usize,
+    row_pos: usize,
     color_code: ColorCode,
     buffer: &'static mut Buffer,
 }
@@ -143,13 +146,13 @@ impl Writer {
     }
 
     /// Returns data at the specified position from the VGA buffer.
-    fn query_data_at(&self, row: usize, col: usize) -> Option<(u8, u8)> {
+    fn query_data_at(&self, row: usize, col: usize) -> Result<(u8, u8), &'static str> {
         match (row, col) {
             (0..HEIGHT, 0..WIDTH) => {
                 let screen_char = self.buffer.chars[row][col].read();
-                Some((screen_char.ascii_char, screen_char.color_code.as_u8()))
+                Ok((screen_char.ascii_char, screen_char.color_code.as_u8()))
             }
-            _ => None
+            _ => Err("coordinates out of bounds")
         }
     }
 
@@ -175,7 +178,7 @@ impl Writer {
                 if self.col_pos >= WIDTH {
                     self.newline();
                 }
-                let row = HEIGHT - 1;
+                let row = self.row_pos;
                 let col = self.col_pos;
                 let color_code = self.color_code;
                 self.buffer.chars[row][col].write(ScreenChar {
@@ -204,10 +207,11 @@ impl Writer {
                 }
             }
         }
+        self.update_cursor();
     }
 
-    /// Outputs a new line.
-    fn newline(&mut self) {
+    /// Uni-directionally scrolls the view.
+    fn scroll_view(&mut self) {
         for row in 1..HEIGHT {
             for col in 0..WIDTH {
                 let ch = self.buffer.chars[row][col].read();
@@ -215,6 +219,15 @@ impl Writer {
             }
         }
         self.clear_row(HEIGHT - 1);
+    }
+
+    /// Outputs a new line.
+    fn newline(&mut self) {
+        if self.row_pos < (HEIGHT - 1) {
+            self.row_pos += 1;
+        } else {
+            self.scroll_view();
+        }
         self.col_pos = 0;
     }
 
@@ -261,6 +274,25 @@ impl Writer {
         for r in 0..HEIGHT {
             self.clear_row(r);
         }
+        self.col_pos = 0;
+        self.row_pos = 0;
+        self.update_cursor();
+    }
+
+    /// Updates the cursor position.
+    fn update_cursor(&mut self) {
+        let cur_offset = (self.row_pos * WIDTH) + self.col_pos;
+
+        // Control Address Register - 0x3D4
+        let mut car = Port::new(0x3D4);
+        // Horizontal Total Register - 0x3D5:0
+        let mut htr = Port::new(0x3D5);
+        unsafe {
+            car.write(0x0Fu16);
+            htr.write((cur_offset & 0xFF) as u16);
+            car.write(0x0Eu16);
+            htr.write(((cur_offset >> 8) & 0xFF) as u16);
+        };
     }
 }
 
@@ -286,7 +318,7 @@ pub fn set_color_code(fg_color: Color, bg_color: Color) {
 }
 
 /// A secure public interface for querying data at the specified position from the VGA buffer.
-pub fn query_data_at(row: usize, col: usize) -> Option<(u8, u8)> {
+pub fn query_data_at(row: usize, col: usize) -> Result<(u8, u8), &'static str> {
     instructions::interrupts::without_interrupts(
         || { WRITER.lock().query_data_at(row, col) }
     )
@@ -312,7 +344,7 @@ pub fn _print(args: fmt::Arguments) {
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::nub::vga_buffer::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::kernel::vga_buffer::_print(format_args!($($arg)*)));
 }
 
 #[macro_export]

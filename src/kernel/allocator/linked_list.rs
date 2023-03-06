@@ -1,7 +1,7 @@
 use core::{mem, ptr};
 use core::alloc::{GlobalAlloc, Layout};
 
-use crate::nub::allocator::{align_up, Locked};
+use crate::kernel::allocator::{align_up, Locked};
 
 /// List Node
 struct ListNode {
@@ -27,11 +27,11 @@ impl ListNode {
 }
 
 /// Free list allocator
-pub struct FreeListAllocator {
+pub struct LinkedListAllocator {
     head: ListNode,
 }
 
-impl FreeListAllocator {
+impl LinkedListAllocator {
     /// Creates a new object.
     pub const fn new() -> Self {
         Self {
@@ -90,6 +90,7 @@ impl FreeListAllocator {
         Ok(alloc_start)
     }
 
+    /// Return the size and alignment from the layout.
     fn size_align(layout: Layout) -> (usize, usize) {
         let layout = layout
             .align_to(mem::align_of::<ListNode>())
@@ -101,9 +102,9 @@ impl FreeListAllocator {
     }
 }
 
-unsafe impl GlobalAlloc for Locked<FreeListAllocator> {
+unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let (size, align) = FreeListAllocator::size_align(layout);
+        let (size, align) = LinkedListAllocator::size_align(layout);
         let mut allocator = self.lock();
 
         if let Some((region, alloc_start)) = allocator.find_region(size, align) {
@@ -119,7 +120,7 @@ unsafe impl GlobalAlloc for Locked<FreeListAllocator> {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        let (size, _) = FreeListAllocator::size_align(layout);
+        let (size, _) = LinkedListAllocator::size_align(layout);
         self.lock().add_free_region(ptr as usize, size);
     }
 }

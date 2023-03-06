@@ -2,17 +2,7 @@ use core::any::type_name;
 use core::panic::PanicInfo;
 
 use crate::{hlt_loop, serial_print, serial_println};
-use crate::emul::{exit_qemu, QemuExitCode};
-
-/// Unit
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(usize)]
-pub enum Unit {
-    KiB = 0x400,
-    MiB = 0x100000,
-    GiB = 0x40000000,
-    TiB = 0x10000000000,
-}
+use crate::helper::emulator::{exit_qemu, QemuExitCode};
 
 /// Serene Test
 pub trait SereneTest {
