@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
-#![test_runner(asm_os::helper::testing::serene_test_runner)]
+#![test_runner(asm_os::aux::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
@@ -9,7 +9,7 @@ use core::panic::PanicInfo;
 use asm_os::{hlt_loop, println};
 use asm_os::kernel::vga_buffer;
 use asm_os::kernel::vga_buffer::Color;
-use asm_os::helper::testing::serene_test_panic_handler;
+use asm_os::aux::testing::serene_test_panic_handler;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {

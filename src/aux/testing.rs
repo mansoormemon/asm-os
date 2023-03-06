@@ -2,7 +2,7 @@ use core::any::type_name;
 use core::panic::PanicInfo;
 
 use crate::{hlt_loop, serial_print, serial_println};
-use crate::helper::emulator::{exit_qemu, QemuExitCode};
+use crate::aux::emulator::{exit_qemu, QemuExitCode};
 
 /// Serene Test
 pub trait SereneTest {

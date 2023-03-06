@@ -9,7 +9,7 @@ pub use bump::BumpAllocator;
 pub use linked_list::LinkedListAllocator;
 pub use pool::PoolAllocator;
 
-use crate::helper::units::Unit;
+use crate::aux::units::Unit;
 
 mod bump;
 mod linked_list;

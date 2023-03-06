@@ -6,7 +6,7 @@
 #![feature(custom_test_frameworks)]
 #![feature(poll_ready)]
 #![feature(exclusive_range_pattern)]
-#![test_runner(crate::helper::testing::serene_test_runner)]
+#![test_runner(crate::aux::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
@@ -20,11 +20,11 @@ use bootloader::entry_point;
 use x86_64::{instructions, VirtAddr};
 
 #[cfg(test)]
-use crate::helper::testing::serene_test_panic_handler;
-use crate::helper::units::Unit;
+use crate::aux::testing::serene_test_panic_handler;
+use crate::aux::units::Unit;
 use crate::kernel::{allocator, gdt, interrupts, memory, vga_buffer};
 
-pub mod helper;
+pub mod aux;
 pub mod kernel;
 
 #[cfg(test)]
@@ -48,6 +48,7 @@ fn panic(info: &PanicInfo) -> ! {
 pub fn init(boot_info: &'static BootInfo) {
     vga_buffer::clear();
     println!("VGA Buffer initialized!");
+    println!("[ Protected Mode ]");
     print!("Initialize GDT ... ");
     gdt::init();
     println!("[ ok ]");

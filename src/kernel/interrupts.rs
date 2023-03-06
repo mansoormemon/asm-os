@@ -7,7 +7,7 @@ use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 use crate::{hlt_loop, println};
-use crate::kernel::{gdt, task};
+use crate::kernel::{gdt, keyboard};
 
 /// 8259 PIC
 ///
@@ -106,7 +106,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     let scancode: u8 = unsafe { port.read() };
 
     // Add the scancode to the waiting queue.
-    task::keyboard::add_scancode(scancode);
+    keyboard::add_scancode(scancode);
 
     unsafe { PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard as u8); }
 }

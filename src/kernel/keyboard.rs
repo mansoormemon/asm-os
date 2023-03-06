@@ -5,7 +5,9 @@ use conquer_once::spin::OnceCell;
 use crossbeam_queue::{ArrayQueue, PopError};
 use futures_util::{Stream, StreamExt};
 use futures_util::task::AtomicWaker;
+use lazy_static::lazy_static;
 use pc_keyboard::{DecodedKey, HandleControl, Keyboard, layouts, ScancodeSet1};
+use spin::Mutex;
 
 use crate::{print, println};
 
@@ -27,6 +29,11 @@ pub(crate) fn add_scancode(scancode: u8) {
     } else {
         println!("WARNING: scancode queue uninitialized");
     }
+}
+
+lazy_static! {
+    /// A global interface for scancode stream.
+    pub static ref READER: Mutex<ScancodeStream> = Mutex::new(ScancodeStream::new());
 }
 
 /// Scancode Stream
@@ -68,8 +75,8 @@ impl Stream for ScancodeStream {
 }
 
 /// Echoes the scancodes on key-press.
-pub async fn echo_key_presses() {
-    let mut scancodes = ScancodeStream::new();
+pub async fn echo() {
+    let mut scancodes = READER.lock();
 
     let mut keyboard = Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore);
     while let Some(scancode) = scancodes.next().await {
