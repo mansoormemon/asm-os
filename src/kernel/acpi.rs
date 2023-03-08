@@ -10,15 +10,18 @@ use x86_64::PhysAddr;
 
 use crate::kernel::memory;
 
+/// Differentiated System Description Table.
 pub const DSDT: &'static str = "DSDT";
+/// Fixed ACPI Description Table.
 pub const FADT: &'static str = "FACP";
-pub const GTDT: &'static str = "GTDT";
+/// Multiple APIC Description Table.
 pub const MADT: &'static str = "APIC";
-pub const MCFG: &'static str = "MCFG";
+/// Root System Description Pointer.
 pub const RSDP: &'static str = "RSD PTR";
-pub const SPCR: &'static str = "SPCR";
+/// Extended System Description Table.
 pub const XSDT: &'static str = "XSDT";
 
+/// Fixed ACPI Description Table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FADT {
     Reserved = 44,
@@ -28,7 +31,7 @@ pub enum FADT {
     ACPIEnable = 52,
     ACPIDisable = 53,
     S4BIOSREQ = 54,
-    PSTATEControl = 55,
+    PStateControl = 55,
     PM1AEventBlock = 56,
     PM1BEventBlock = 60,
     PM1AControlBlock = 64,
@@ -56,34 +59,48 @@ pub enum FADT {
     Century = 107,
 }
 
+/// Value of SCI interrupt in the FADT register.
 static SCI_INTERRUPT: AtomicU16 = AtomicU16::new(u16::MAX);
+/// Value of SMI command port in the FADT register.
 static SMI_COMMAND_PORT: AtomicU32 = AtomicU32::new(u32::MAX);
+/// Value of ACPI enable in the FADT register.
 static ACPI_ENABLE: AtomicU8 = AtomicU8::new(u8::MAX);
+/// Value of ACPI disable in the FADT register.
 static ACPI_DISABLE: AtomicU8 = AtomicU8::new(u8::MAX);
-
+/// Value of PM-1A control block in the FADT register.
 static PM_1A_CONTROL_BLOCK: AtomicU32 = AtomicU32::new(u32::MAX);
+/// Value of PM-1B control block in the FADT register.
 static PM_1B_CONTROL_BLOCK: AtomicU32 = AtomicU32::new(u32::MAX);
 
+/// Parsed value of SLP_TYPA from the AML tables.
 static SLP_TYPA: AtomicU16 = AtomicU16::new(u16::MAX);
+/// Parsed value of SLP_TYPB from the AML tables.
 static SLP_TYPB: AtomicU16 = AtomicU16::new(u16::MAX);
 
+/// Value of SLP_EN from the AML tables.
 static SLP_EN: AtomicU16 = AtomicU16::new(u16::MAX);
 
+/// Block code for S5.
 const BLOCK_CODE_S5: &'static str = "\\_S5";
 
+/// PM-1X Control Block Bit.
 const PM_1X_CONTROL_BLOCK_BIT: u8 = 13;
 
+/// Block S5.
 #[repr(u8)]
 enum BlockS5 {
     SLPTYPA,
     SLPTYPB,
 }
 
-pub fn init() {
+/// Initializes the ACPI and stores required parameters.
+pub fn init() -> Result<(), CustomAcpiError> {
     if let Ok(acpi) = unsafe { AcpiTables::search_for_rsdp_bios(CustomAcpiHandler) } {
+        let mut fadt_found = false;
         for (sign, sdt) in acpi.sdts {
             match sign.as_str() {
                 FADT => {
+                    fadt_found = true;
                     SCI_INTERRUPT.store(
                         read_fadt(sdt.physical_address, FADT::SCIInterrupt),
                         Ordering::Relaxed,
@@ -113,6 +130,10 @@ pub fn init() {
             }
         }
 
+        if !fadt_found {
+            return Err(CustomAcpiError::FADTNotFound);
+        }
+
         match &acpi.dsdt {
             Some(dsdt) => {
                 let mut aml = AmlContext::new(Box::new(CustomAmlHandler), DebugVerbosity::None);
@@ -129,24 +150,37 @@ pub fn init() {
                         if let AmlValue::Integer(value) = s5[BlockS5::SLPTYPB as usize] {
                             SLP_TYPB.store(value as u16, Ordering::Relaxed);
                         }
+                    } else {
+                        return Err(CustomAcpiError::S5ParseFailure);
                     }
                     SLP_EN.store(1 << PM_1X_CONTROL_BLOCK_BIT, Ordering::Relaxed);
+                } else {
+                    return Err(CustomAcpiError::AMLParseFailure);
                 }
             }
-            None => {}
+            None => {
+                return Err(CustomAcpiError::InvalidDSDT);
+            }
         }
+    } else {
+        return Err(CustomAcpiError::ACPINotFound);
     }
+
+    Ok(())
 }
 
+/// Converts the given physical address to virtual address and returns it.
 fn read_addr<T>(phys_addr: usize) -> T where T: Copy {
     let virt_addr = memory::phys_to_virt_addr(PhysAddr::new(phys_addr as u64));
     unsafe { *virt_addr.as_ptr::<T>() }
 }
 
-fn read_fadt<T>(phys_addr: usize, register: FADT) -> T where T: Copy {
-    read_addr(phys_addr + register as usize)
+/// Reads the value of the given register and returns it.
+fn read_fadt<T>(fadt_phys_addr: usize, register: FADT) -> T where T: Copy {
+    read_addr(fadt_phys_addr + register as usize)
 }
 
+/// Custom ACPI Handler.
 #[derive(Clone)]
 struct CustomAcpiHandler;
 
@@ -159,6 +193,7 @@ impl AcpiHandler for CustomAcpiHandler {
     fn unmap_physical_region<T>(_region: &PhysicalMapping<Self, T>) {}
 }
 
+/// Custom AML Handler.
 #[derive(Clone)]
 struct CustomAmlHandler;
 
@@ -244,6 +279,17 @@ impl Handler for CustomAmlHandler {
     }
 }
 
+/// Custom ACPI Error.
+#[derive(Debug, Clone, Copy)]
+pub enum CustomAcpiError {
+    ACPINotFound,
+    AMLParseFailure,
+    InvalidDSDT,
+    FADTNotFound,
+    S5ParseFailure,
+}
+
+/// Powers off the machine.
 pub fn power_off() {
     let pm_1a_cnt_blk = PM_1A_CONTROL_BLOCK.load(Ordering::Relaxed);
     let slp_typa = SLP_TYPA.load(Ordering::Relaxed);

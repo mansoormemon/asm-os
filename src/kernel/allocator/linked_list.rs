@@ -3,7 +3,7 @@ use core::alloc::{GlobalAlloc, Layout};
 
 use crate::kernel::allocator::{align_up, Locked};
 
-/// List Node
+/// List Node.
 struct ListNode {
     size: usize,
     next: Option<&'static mut ListNode>,
@@ -26,7 +26,7 @@ impl ListNode {
     }
 }
 
-/// Free list allocator
+/// Free list allocator.
 pub struct LinkedListAllocator {
     head: ListNode,
 }

@@ -22,16 +22,6 @@ use x86_64::instructions::port::Port;
 //
 // Wikipedia: https://en.wikipedia.org/wiki/VGA_text_mode
 
-lazy_static! {
-    // Global Interface for writing to VGA Buffer.
-    static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
-        row_pos: 0,
-        col_pos: 0,
-        color_code: ColorCode::new(Color::LightGray, Color::Black),
-        buffer: unsafe { &mut *(ADDRESS as *mut Buffer) },
-    });
-}
-
 // White-Space Characters
 
 pub const CHAR_SPACE: u8 = b' ';
@@ -54,7 +44,7 @@ pub const RANGE_PRINTABLE_ASCII_END: u8 = 0x7E;
 
 pub const FALLBACK_CHAR: u8 = 0xFE;
 
-/// Color
+/// Color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Color {
@@ -76,7 +66,7 @@ pub enum Color {
     White = 0xF,
 }
 
-/// Color Code
+/// Color Code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 struct ColorCode(u8);
@@ -102,7 +92,7 @@ impl ColorCode {
     }
 }
 
-/// Screen Character
+/// Screen Character.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 struct ScreenChar {
@@ -301,6 +291,16 @@ impl fmt::Write for Writer {
         self.write_str(s);
         Ok(())
     }
+}
+
+lazy_static! {
+    // Global Interface for writing to VGA Buffer.
+    static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        row_pos: 0,
+        col_pos: 0,
+        color_code: ColorCode::new(Color::LightGray, Color::Black),
+        buffer: unsafe { &mut *(ADDRESS as *mut Buffer) },
+    });
 }
 
 /// A secure public interface for retrieving the color of the foreground and background.

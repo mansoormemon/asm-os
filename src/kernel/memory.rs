@@ -92,10 +92,12 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     }
 }
 
+/// Converts physical address to virtual address.
 pub fn phys_to_virt_addr(addr: PhysAddr) -> VirtAddr {
     VirtAddr::new(addr.as_u64()) + PHYS_MEM_OFFSET.load(Ordering::Relaxed)
 }
 
+/// Converts virtual address to physical address.
 pub fn virt_to_phys_addr(addr: VirtAddr) -> Option<PhysAddr> {
     let mapper = unsafe { mapper() };
     mapper.translate_addr(addr)

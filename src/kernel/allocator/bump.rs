@@ -3,7 +3,7 @@ use core::ptr;
 
 use crate::kernel::allocator::{align_up, Locked};
 
-/// Bump Allocator
+/// Bump Allocator.
 pub struct BumpAllocator {
     heap_start: usize,
     heap_end: usize,

@@ -17,7 +17,7 @@ mod bump;
 mod linked_list;
 mod pool;
 
-/// Locked
+/// Locked.
 pub struct Locked<A> {
     inner: Mutex<A>,
 }

@@ -36,7 +36,7 @@ lazy_static! {
     pub static ref READER: Mutex<ScancodeStream> = Mutex::new(ScancodeStream::new());
 }
 
-/// Scancode Stream
+/// Scancode Stream.
 pub struct ScancodeStream {
     _private: (),
 }

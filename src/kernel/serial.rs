@@ -5,8 +5,6 @@ use spin::Mutex;
 use uart_16550::SerialPort;
 use x86_64::instructions;
 
-// Global Interface
-
 lazy_static! {
     /// Global interface for serial outputting to host system.
     static ref SERIAL_3F8: Mutex<SerialPort> = {

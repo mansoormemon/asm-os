@@ -49,7 +49,7 @@ lazy_static! {
     };
 }
 
-/// Selectors
+/// Selectors.
 struct Selectors {
     code_selector: SegmentSelector,
     tss_selector: SegmentSelector,

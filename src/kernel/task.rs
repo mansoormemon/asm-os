@@ -6,21 +6,21 @@ use core::task::{Context, Poll};
 
 pub mod executor;
 
-/// Task Id
+/// Task ID.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct TaskId(u64);
+pub(crate) struct TaskID(u64);
 
-impl TaskId {
+impl TaskID {
     /// Creates a new object.
     fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-        TaskId(NEXT_ID.fetch_add(1, Ordering::Relaxed))
+        TaskID(NEXT_ID.fetch_add(1, Ordering::Relaxed))
     }
 }
 
-/// Task
+/// Task.
 pub struct Task {
-    id: TaskId,
+    id: TaskID,
     future: Pin<Box<dyn Future<Output=()>>>,
 }
 
@@ -28,7 +28,7 @@ impl Task {
     /// Creates a new object.
     pub fn new(future: impl Future<Output=()> + 'static) -> Self {
         Task {
-            id: TaskId::new(),
+            id: TaskID::new(),
             future: Box::pin(future),
         }
     }

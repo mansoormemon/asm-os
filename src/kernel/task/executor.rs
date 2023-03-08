@@ -6,16 +6,16 @@ use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
 use x86_64::instructions;
 
-use crate::kernel::task::{Task, TaskId};
+use crate::kernel::task::{Task, TaskID};
 
 /// Size of waiting queue for tasks.
 pub const QUEUE_SIZE: usize = 128;
 
 /// Executor
 pub struct Executor {
-    tasks: BTreeMap<TaskId, Task>,
-    task_queue: Arc<ArrayQueue<TaskId>>,
-    waker_cache: BTreeMap<TaskId, Waker>,
+    tasks: BTreeMap<TaskID, Task>,
+    task_queue: Arc<ArrayQueue<TaskID>>,
+    waker_cache: BTreeMap<TaskID, Waker>,
 }
 
 impl Executor {
@@ -83,13 +83,13 @@ impl Executor {
 
 /// Waker Wrapper
 struct WakerWrapper {
-    task_id: TaskId,
-    task_queue: Arc<ArrayQueue<TaskId>>,
+    task_id: TaskID,
+    task_queue: Arc<ArrayQueue<TaskID>>,
 }
 
 impl WakerWrapper {
     /// Creates a new Waker.
-    fn new(task_id: TaskId, task_queue: Arc<ArrayQueue<TaskId>>) -> Waker {
+    fn new(task_id: TaskID, task_queue: Arc<ArrayQueue<TaskID>>) -> Waker {
         Waker::from(Arc::new(WakerWrapper {
             task_id,
             task_queue,

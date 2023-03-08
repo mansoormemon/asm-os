@@ -1,4 +1,4 @@
-/// Unit
+/// Unit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
 pub enum Unit {

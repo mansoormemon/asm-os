@@ -68,10 +68,14 @@ pub fn init(boot_info: &'static BootInfo) {
     println!("[ ok ]");
 
     print!("Initialize ACPI ... ");
-    acpi::init();
-    println!("[ ok ]");
+    if let Err(err_code) = acpi::init() {
+        println!("[ failure ], error={:?}", err_code);
+    } else {
+        println!("[ ok ]");
+    }
 }
 
+/// Halts execution of CPU until next interrupt.
 pub fn hlt_loop() -> ! {
     loop {
         instructions::hlt();

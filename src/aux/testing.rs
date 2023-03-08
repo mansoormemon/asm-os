@@ -2,9 +2,9 @@ use core::any::type_name;
 use core::panic::PanicInfo;
 
 use crate::{hlt_loop, serial_print, serial_println};
-use crate::aux::emulator::{exit_qemu, QemuExitCode};
+use crate::aux::emulator::{exit_qemu, QEMUExitCode};
 
-/// Serene Test
+/// Serene Test.
 pub trait SereneTest {
     fn run(&self);
 }
@@ -24,18 +24,18 @@ pub fn serene_test_runner(tests: &[&dyn SereneTest]) {
     for test in tests {
         test.run();
     }
-    exit_qemu(QemuExitCode::Success);
+    exit_qemu(QEMUExitCode::Success);
 }
 
 /// A panic handler for serene tests.
 pub fn serene_test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[ failure ]");
     serial_println!("{}", info);
-    exit_qemu(QemuExitCode::Failure);
+    exit_qemu(QEMUExitCode::Failure);
     hlt_loop();
 }
 
-/// Panicky Test
+/// Panicky Test.
 pub trait PanickyTest {
     fn run(&self);
 }
@@ -57,13 +57,13 @@ pub fn panicky_test_runner(tests: &[&dyn PanickyTest]) {
     }
     if let Some(test) = tests.first() {
         test.run();
-        exit_qemu(QemuExitCode::Failure);
+        exit_qemu(QEMUExitCode::Failure);
     }
 }
 
 /// A panic handler for panicky tests.
 pub fn panicky_test_panic_handler(_info: &PanicInfo) -> ! {
     serial_println!("[ success ]");
-    exit_qemu(QemuExitCode::Success);
+    exit_qemu(QEMUExitCode::Success);
     hlt_loop();
 }
