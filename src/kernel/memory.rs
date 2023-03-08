@@ -1,7 +1,10 @@
+use core::sync::atomic::{AtomicU64, Ordering};
+
+use bootloader::BootInfo;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::{PhysAddr, VirtAddr};
 use x86_64::registers::control::Cr3;
-use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB};
+use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB, Translate};
 
 // PAGING
 //
@@ -19,11 +22,26 @@ use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PageTable, Phy
 //
 // OS Dev Wiki: https://wiki.osdev.org/Paging
 
+/// Size of page.
 pub const PAGE_SIZE: usize = 4096;
 
+/// Physical memory offset in the virtual space.
+static PHYS_MEM_OFFSET: AtomicU64 = AtomicU64::new(0);
+
+/// Initializes and returns the L4 page table.
+pub fn init(boot_info: &'static BootInfo) {
+    PHYS_MEM_OFFSET.store(boot_info.physical_memory_offset, Ordering::Relaxed);
+}
+
+/// Returns physical memory offset.
+pub fn physical_memory_offset() -> u64 {
+    PHYS_MEM_OFFSET.load(Ordering::Relaxed)
+}
+
 /// Returns active L4 page table set up by the bootloader to enable paging.
-unsafe fn get_active_l4_table(phys_mem_offset: VirtAddr) -> &'static mut PageTable {
+unsafe fn get_active_l4_table() -> &'static mut PageTable {
     let (l4_page_table, _) = Cr3::read();
+    let phys_mem_offset = VirtAddr::new(physical_memory_offset());
 
     let phys_addr = l4_page_table.start_address();
     let virt_addr = phys_mem_offset + (phys_addr.as_u64());
@@ -32,9 +50,10 @@ unsafe fn get_active_l4_table(phys_mem_offset: VirtAddr) -> &'static mut PageTab
     &mut *page_table
 }
 
-/// Initializes and returns the L4 page table.
-pub unsafe fn init(phys_mem_offset: VirtAddr) -> OffsetPageTable<'static> {
-    let l4_table = get_active_l4_table(phys_mem_offset);
+/// Returns the Offset Page Table.
+pub unsafe fn mapper() -> OffsetPageTable<'static> {
+    let l4_table = get_active_l4_table();
+    let phys_mem_offset = VirtAddr::new(physical_memory_offset());
 
     OffsetPageTable::new(l4_table, phys_mem_offset)
 }
@@ -71,4 +90,13 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
         self.next += 1;
         frame
     }
+}
+
+pub fn phys_to_virt_addr(addr: PhysAddr) -> VirtAddr {
+    VirtAddr::new(addr.as_u64()) + PHYS_MEM_OFFSET.load(Ordering::Relaxed)
+}
+
+pub fn virt_to_phys_addr(addr: VirtAddr) -> Option<PhysAddr> {
+    let mapper = unsafe { mapper() };
+    mapper.translate_addr(addr)
 }

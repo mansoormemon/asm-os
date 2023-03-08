@@ -46,7 +46,7 @@ impl ScancodeStream {
     pub fn new() -> Self {
         SCANCODE_QUEUE.try_init_once(
             || ArrayQueue::new(SCANCODE_QUEUE_CAPACITY)
-        ).expect("ScancodeStream::new should only be called once");
+        ).expect("asm_os::kernel::keyboard::ScancodeStream::new should only be called once");
         ScancodeStream { _private: () }
     }
 }
@@ -55,7 +55,7 @@ impl Stream for ScancodeStream {
     type Item = u8;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let queue = SCANCODE_QUEUE.try_get().expect("uninitialized");
+        let queue = SCANCODE_QUEUE.try_get().expect("asm_os::kernel::keyboard: scancode queue uninitialized");
 
         if let Ok(scancode) = queue.pop() {
             return Poll::Ready(Some(scancode));

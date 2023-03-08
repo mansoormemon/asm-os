@@ -1,5 +1,6 @@
 use alloc::alloc::Layout;
 
+use bootloader::BootInfo;
 use spin::{Mutex, MutexGuard};
 use x86_64::structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB};
 use x86_64::structures::paging::mapper::MapToError;
@@ -10,6 +11,7 @@ pub use linked_list::LinkedListAllocator;
 pub use pool::PoolAllocator;
 
 use crate::aux::units::Unit;
+use crate::kernel::memory;
 
 mod bump;
 mod linked_list;
@@ -34,13 +36,6 @@ impl<A> Locked<A> {
     }
 }
 
-/// Align the given address `addr` upwards to alignment `align`.
-///
-/// Requires that `align` is a power of two.
-fn align_up(addr: usize, align: usize) -> usize {
-    (addr + align - 1) & !(align - 1)
-}
-
 /// Start address of the the heap in the virtual space.
 pub const HEAP_START: usize = 0x4444_4444_0000;
 /// Size of heap.
@@ -58,8 +53,16 @@ fn alloc_error_handler(layout: Layout) -> ! {
     panic!("allocation error: {:?}", layout)
 }
 
+/// Intializes memory heap using mapper and frame allocator.
+pub fn init(boot_info: &'static BootInfo) {
+    let mut mapper = unsafe { memory::mapper() };
+    let mut frame_allocator = unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
+
+    init_heap(&mut mapper, &mut frame_allocator).expect("failed to initialize heap");
+}
+
 /// Initializes the heap.
-pub fn init_heap(mapper: &mut impl Mapper<Size4KiB>, frame_allocator: &mut impl FrameAllocator<Size4KiB>) -> Result<(), MapToError<Size4KiB>> {
+fn init_heap(mapper: &mut impl Mapper<Size4KiB>, frame_allocator: &mut impl FrameAllocator<Size4KiB>) -> Result<(), MapToError<Size4KiB>> {
     let page_range = {
         let heap_start = VirtAddr::new(HEAP_START as u64);
         let heap_end = VirtAddr::new(HEAP_END as u64);
@@ -80,4 +83,11 @@ pub fn init_heap(mapper: &mut impl Mapper<Size4KiB>, frame_allocator: &mut impl 
     unsafe { ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE) };
 
     Ok(())
+}
+
+/// Align the given address `addr` upwards to alignment `align`.
+///
+/// Requires that `align` is a power of two.
+fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
 }

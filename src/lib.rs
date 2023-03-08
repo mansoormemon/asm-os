@@ -17,12 +17,11 @@ use core::panic::PanicInfo;
 use bootloader::BootInfo;
 #[cfg(test)]
 use bootloader::entry_point;
-use x86_64::{instructions, VirtAddr};
+use x86_64::instructions;
 
 #[cfg(test)]
 use crate::aux::testing::serene_test_panic_handler;
-use crate::aux::units::Unit;
-use crate::kernel::{allocator, gdt, interrupts, memory, vga_buffer};
+use crate::kernel::{acpi, allocator, gdt, interrupts, memory, vga_buffer};
 
 pub mod aux;
 pub mod kernel;
@@ -47,35 +46,30 @@ fn panic(info: &PanicInfo) -> ! {
 
 pub fn init(boot_info: &'static BootInfo) {
     vga_buffer::clear();
-    println!("VGA Buffer initialized!");
-    println!("[ Protected Mode ]");
+
     print!("Initialize GDT ... ");
     gdt::init();
     println!("[ ok ]");
-    print!("Initialize IDT ... ");
-    interrupts::init_idt();
-    println!("[ ok ]");
-    print!("Initialize PICS ... ");
-    unsafe { interrupts::PICS.lock().initialize() };
-    println!("[ ok ]");
-    print!("Enable interrupts ... ");
-    instructions::interrupts::enable();
+
+    print!("Initialize interrupts ... ");
+    interrupts::init();
     println!("[ ok ]");
 
-    print!("Fetching PMO ... ");
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    println!("{:?}", phys_mem_offset);
-    print!("Map physical memory at PMO ... ");
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    println!("[ ok ]");
-    print!("Initialize frame allocator ... ");
-    let mut frame_allocator = unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    print!("Enabling interrupts ...");
+    interrupts::enable();
     println!("[ ok ]");
 
-    print!("Initialize heap ... ");
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("failed to initialize heap");
+    print!("Initialize memory ... ");
+    memory::init(boot_info);
     println!("[ ok ]");
-    println!("Heap={{ start={:#01x}, end={:#01x}, size={} {:?} }}", allocator::HEAP_START, allocator::HEAP_END, allocator::HEAP_SIZE / (Unit::KiB as usize), Unit::KiB);
+
+    print!("Initialize allocator ... ");
+    allocator::init(boot_info);
+    println!("[ ok ]");
+
+    print!("Initialize ACPI ... ");
+    acpi::init();
+    println!("[ ok ]");
 }
 
 pub fn hlt_loop() -> ! {

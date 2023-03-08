@@ -66,9 +66,27 @@ lazy_static! {
     };
 }
 
+/// Initializes IDT and PICs.
+pub fn init() {
+    init_idt();
+    unsafe {
+        init_pics();
+    }
+}
+
 /// Initializes the IDT.
-pub fn init_idt() {
+fn init_idt() {
     IDT.load();
+}
+
+/// Initializes PICs.
+unsafe fn init_pics() {
+    PICS.lock().initialize();
+}
+
+/// Enables interrupts.
+pub fn enable() {
+    instructions::interrupts::enable();
 }
 
 /// A handler for breakpoint exceptions.
