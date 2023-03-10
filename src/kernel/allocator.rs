@@ -53,7 +53,7 @@ fn alloc_error_handler(layout: Layout) -> ! {
     panic!("allocation error: {:?}", layout)
 }
 
-/// Intializes memory heap using mapper and frame allocator.
+/// Intializes the heap using a memory mapper and frame allocator.
 pub fn init(boot_info: &'static BootInfo) {
     let mut mapper = unsafe { memory::mapper() };
     let mut frame_allocator = unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };

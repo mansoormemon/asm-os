@@ -19,9 +19,11 @@ use bootloader::BootInfo;
 use bootloader::entry_point;
 use x86_64::instructions;
 
+use crate::aux::logger;
+use crate::aux::logger::LogLevel;
 #[cfg(test)]
 use crate::aux::testing::serene_test_panic_handler;
-use crate::kernel::{acpi, allocator, gdt, interrupts, memory, vga_buffer};
+use crate::kernel::{acpi, allocator, gdt, interrupts, keyboard, memory, pit, vga_buffer};
 
 pub mod aux;
 pub mod kernel;
@@ -55,24 +57,40 @@ pub fn init(boot_info: &'static BootInfo) {
     interrupts::init();
     println!("[ ok ]");
 
-    print!("Enabling interrupts ...");
+    print!("Enable interrupts ... ");
     interrupts::enable();
     println!("[ ok ]");
 
-    print!("Initialize memory ... ");
+    print!("Initialize time ... ");
+    pit::init();
+    println!("[ ok ]");
+
+    print!("Initialize logger ... ");
+    logger::init(LogLevel::INFO);
+    println!("[ ok ]");
+
+    println!();
+
+    log!( LogLevel::INFO , "Initialize memory ... ");
     memory::init(boot_info);
     println!("[ ok ]");
 
-    print!("Initialize allocator ... ");
+    log!(LogLevel::INFO , "Initialize allocator ... ");
     allocator::init(boot_info);
     println!("[ ok ]");
 
-    print!("Initialize ACPI ... ");
+    log!( LogLevel::INFO, "Initialize ACPI ... ");
     if let Err(err_code) = acpi::init() {
         println!("[ failure ], error={:?}", err_code);
     } else {
         println!("[ ok ]");
     }
+
+    log!( LogLevel::INFO, "Initialize keyboard ... ");
+    keyboard::init();
+    println!(" [ ok ] ");
+
+    println!();
 }
 
 /// Halts execution of CPU until next interrupt.

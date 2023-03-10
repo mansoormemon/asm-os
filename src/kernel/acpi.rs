@@ -77,14 +77,11 @@ static SLP_TYPA: AtomicU16 = AtomicU16::new(u16::MAX);
 /// Parsed value of SLP_TYPB from the AML tables.
 static SLP_TYPB: AtomicU16 = AtomicU16::new(u16::MAX);
 
-/// Value of SLP_EN from the AML tables.
-static SLP_EN: AtomicU16 = AtomicU16::new(u16::MAX);
+/// Value of SLP_EN.
+const SLP_EN: u16 = 0x2000;
 
 /// Block code for S5.
 const BLOCK_CODE_S5: &'static str = "\\_S5";
-
-/// PM-1X Control Block Bit.
-const PM_1X_CONTROL_BLOCK_BIT: u8 = 13;
 
 /// Block S5.
 #[repr(u8)]
@@ -153,7 +150,6 @@ pub fn init() -> Result<(), CustomAcpiError> {
                     } else {
                         return Err(CustomAcpiError::S5ParseFailure);
                     }
-                    SLP_EN.store(1 << PM_1X_CONTROL_BLOCK_BIT, Ordering::Relaxed);
                 } else {
                     return Err(CustomAcpiError::AMLParseFailure);
                 }
@@ -294,17 +290,8 @@ pub fn power_off() {
     let pm_1a_cnt_blk = PM_1A_CONTROL_BLOCK.load(Ordering::Relaxed);
     let slp_typa = SLP_TYPA.load(Ordering::Relaxed);
 
-    let pm_1b_cnt_blk = PM_1B_CONTROL_BLOCK.load(Ordering::Relaxed);
-    let slp_typb = SLP_TYPB.load(Ordering::Relaxed);
-
-    let slp_en = SLP_EN.load(Ordering::Relaxed);
-
     let mut port_pm_1a = Port::new(pm_1a_cnt_blk as u16);
-    let mut port_pm_1b = Port::new(pm_1b_cnt_blk as u16);
     unsafe {
-        port_pm_1a.write(slp_typa | slp_en);
-        if pm_1b_cnt_blk != 0 {
-            port_pm_1b.write(slp_typb | slp_en);
-        }
+        port_pm_1a.write(slp_typa | SLP_EN);
     }
 }

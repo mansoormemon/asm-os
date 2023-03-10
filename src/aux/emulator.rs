@@ -10,10 +10,10 @@ pub enum QEMUExitCode {
 
 /// Exits QEMU with the given exit code.
 pub fn exit_qemu(exit_code: QEMUExitCode) {
-    const PORT_ADDR: u16 = 0xF4;
+    const PORT: u16 = 0xF4;
 
+    let mut port = Port::new(PORT);
     unsafe {
-        let mut port = Port::new(PORT_ADDR);
         port.write(exit_code as u32);
     }
 }

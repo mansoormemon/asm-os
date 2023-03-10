@@ -8,8 +8,10 @@ use futures_util::task::AtomicWaker;
 use lazy_static::lazy_static;
 use pc_keyboard::{DecodedKey, HandleControl, Keyboard, layouts, ScancodeSet1};
 use spin::Mutex;
+use x86_64::instructions::port::Port;
 
 use crate::{print, println};
+use crate::kernel::interrupts::{self, InterruptIndex};
 
 /// Capacity of the scancode waiting queue.
 const SCANCODE_QUEUE_CAPACITY: usize = 128;
@@ -38,7 +40,7 @@ lazy_static! {
 
 /// Scancode Stream.
 pub struct ScancodeStream {
-    _private: (),
+    __unused: (),
 }
 
 impl ScancodeStream {
@@ -47,7 +49,7 @@ impl ScancodeStream {
         SCANCODE_QUEUE.try_init_once(
             || ArrayQueue::new(SCANCODE_QUEUE_CAPACITY)
         ).expect("asm_os::kernel::keyboard::ScancodeStream::new should only be called once");
-        ScancodeStream { _private: () }
+        ScancodeStream { __unused: () }
     }
 }
 
@@ -89,4 +91,19 @@ pub async fn echo() {
             }
         }
     }
+}
+
+/// An interrupt handler for keyboard interrupts.
+fn keyboard_interrupt_handler() {
+    const PORT: u16 = 0x60;
+
+    let mut port = Port::new(PORT);
+    let scancode: u8 = unsafe { port.read() };
+
+    // Add the scancode to the waiting queue.
+    add_scancode(scancode);
+}
+
+pub fn init() {
+    interrupts::set_interrupt_handler(InterruptIndex::Keyboard, keyboard_interrupt_handler);
 }

@@ -11,7 +11,7 @@ use crate::kernel::task::{Task, TaskID};
 /// Size of waiting queue for tasks.
 pub const QUEUE_SIZE: usize = 128;
 
-/// Executor
+/// Executor.
 pub struct Executor {
     tasks: BTreeMap<TaskID, Task>,
     task_queue: Arc<ArrayQueue<TaskID>>,
@@ -81,7 +81,7 @@ impl Executor {
     }
 }
 
-/// Waker Wrapper
+/// Waker Wrapper.
 struct WakerWrapper {
     task_id: TaskID,
     task_queue: Arc<ArrayQueue<TaskID>>,

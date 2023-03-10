@@ -6,6 +6,7 @@ use crate::aux::emulator::{exit_qemu, QEMUExitCode};
 
 /// Serene Test.
 pub trait SereneTest {
+    /// The run function.
     fn run(&self);
 }
 
@@ -37,6 +38,7 @@ pub fn serene_test_panic_handler(info: &PanicInfo) -> ! {
 
 /// Panicky Test.
 pub trait PanickyTest {
+    /// The run function.
     fn run(&self);
 }
 

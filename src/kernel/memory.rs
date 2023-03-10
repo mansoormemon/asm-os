@@ -26,7 +26,7 @@ use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PageTable, Phy
 pub const PAGE_SIZE: usize = 4096;
 
 /// Physical memory offset in the virtual space.
-static PHYS_MEM_OFFSET: AtomicU64 = AtomicU64::new(0);
+static PHYS_MEM_OFFSET: AtomicU64 = AtomicU64::new(u64::MAX);
 
 /// Initializes and returns the L4 page table.
 pub fn init(boot_info: &'static BootInfo) {
@@ -58,7 +58,7 @@ pub unsafe fn mapper() -> OffsetPageTable<'static> {
     OffsetPageTable::new(l4_table, phys_mem_offset)
 }
 
-/// Boot Info Frame Allocator
+/// Boot Info Frame Allocator.
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryMap,
     next: usize,
@@ -92,12 +92,12 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
     }
 }
 
-/// Converts physical address to virtual address.
+/// Translates physical address into virtual address.
 pub fn phys_to_virt_addr(addr: PhysAddr) -> VirtAddr {
     VirtAddr::new(addr.as_u64()) + PHYS_MEM_OFFSET.load(Ordering::Relaxed)
 }
 
-/// Converts virtual address to physical address.
+/// Translates virtual address into physical address.
 pub fn virt_to_phys_addr(addr: VirtAddr) -> Option<PhysAddr> {
     let mapper = unsafe { mapper() };
     mapper.translate_addr(addr)

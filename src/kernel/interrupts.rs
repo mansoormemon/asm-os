@@ -7,9 +7,9 @@ use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 use crate::{hlt_loop, println};
-use crate::kernel::{gdt, keyboard};
+use crate::kernel::gdt;
 
-/// 8259 PIC
+/// 8259 Programmable Interrupt Controller (PIC)
 ///
 /// The 8259 Programmable Interrupt Controller (PIC) is one of the most important chips making up
 /// the x86 architecture. Without it, the x86 architecture would not be an interrupt driven
@@ -19,16 +19,72 @@ use crate::kernel::{gdt, keyboard};
 ///
 /// OS Dev Wiki: https://wiki.osdev.org/8259_PIC
 
-/// Offset of PIC 1 (Master).
+/// Offset of PIC 1.
 pub const PIC_1_OFFSET: u8 = 32;
+/// Pin count of PIC 1.
+pub const PIC_1_PIN_COUNT: u8 = 8;
+/// Data port for PIC 1.
+pub const PIC_1_DATA_PORT: u16 = 0x21;
 
-/// Offset of PIC 2 (Slave).
-pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+/// Offset of PIC 2.
+pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + PIC_1_PIN_COUNT;
+/// Pin count of PIC 2.
+pub const PIC_2_PIN_COUNT: u8 = 8;
+/// Data port for PIC 2.
+pub const PIC_2_DATA_PORT: u16 = 0xA1;
 
-/// A global interface for PIC 1 (Master).
+/// A global interface for PICs.
 pub static PICS: Mutex<ChainedPics> = Mutex::new(
     unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) }
 );
+
+/// Total interrupt pins.
+const TOTAL_INTERRUPT_PINS: u8 = PIC_1_PIN_COUNT + PIC_2_PIN_COUNT;
+
+/// Default interrupt handler.
+fn default_interrupt_handler() {}
+
+lazy_static! {
+    /// A global interface for interrupt handlers.
+    static ref INTERRUPT_HANDLERS: Mutex<[fn(); TOTAL_INTERRUPT_PINS as usize]> = Mutex::new(
+        [default_interrupt_handler; TOTAL_INTERRUPT_PINS as usize]
+    );
+}
+
+/// Generates the interrupt handler.
+macro_rules! generate_interrupt_handler {
+    ($handler:ident, $interrupt:expr) => {
+        pub extern "x86-interrupt" fn $handler(_stack_frame: InterruptStackFrame) {
+            let interrupt_handlers = INTERRUPT_HANDLERS.lock();
+            interrupt_handlers[$interrupt]();
+            unsafe { PICS.lock().notify_end_of_interrupt(calc_interrupt_index($interrupt)); }
+        }
+    };
+}
+
+generate_interrupt_handler!(interrupt_0x0_handler, 0x0);
+generate_interrupt_handler!(interrupt_0x1_handler, 0x1);
+generate_interrupt_handler!(interrupt_0x2_handler, 0x2);
+generate_interrupt_handler!(interrupt_0x3_handler, 0x3);
+generate_interrupt_handler!(interrupt_0x4_handler, 0x4);
+generate_interrupt_handler!(interrupt_0x5_handler, 0x5);
+generate_interrupt_handler!(interrupt_0x6_handler, 0x6);
+generate_interrupt_handler!(interrupt_0x7_handler, 0x7);
+generate_interrupt_handler!(interrupt_0x8_handler, 0x8);
+generate_interrupt_handler!(interrupt_0x9_handler, 0x9);
+generate_interrupt_handler!(interrupt_0xa_handler, 0xA);
+generate_interrupt_handler!(interrupt_0xb_handler, 0xB);
+generate_interrupt_handler!(interrupt_0xc_handler, 0xC);
+generate_interrupt_handler!(interrupt_0xd_handler, 0xD);
+generate_interrupt_handler!(interrupt_0xe_handler, 0xE);
+generate_interrupt_handler!(interrupt_0xf_handler, 0xF);
+
+/// Maps the interrupt handler.
+macro_rules! map_interrupt_handler {
+    ($reference:ident, $handler:ident, $interrupt:expr) => {
+        $reference[calc_interrupt_index($interrupt) as usize].set_handler_fn($handler);
+    };
+}
 
 /// Interrupt Index.
 #[derive(Debug, Clone, Copy)]
@@ -36,6 +92,12 @@ pub static PICS: Mutex<ChainedPics> = Mutex::new(
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
     Keyboard,
+    RTC = PIC_2_OFFSET,
+}
+
+/// Calculates the interrupt index.
+fn calc_interrupt_index(interrupt: u8) -> u8 {
+    PIC_1_OFFSET + interrupt
 }
 
 // Interrupt Descriptor Table (IDT)
@@ -51,16 +113,35 @@ lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
 
+        // Set breakpoint handler.
         idt.breakpoint.set_handler_fn(breakpoint_handler);
+
+        // Set double fault handler and stack index.
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
+
+        // Set page fault handler.
         idt.page_fault.set_handler_fn(page_fault_handler);
 
-        idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
-        idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
+        map_interrupt_handler!(idt, interrupt_0x0_handler, 0x0);
+        map_interrupt_handler!(idt, interrupt_0x1_handler, 0x1);
+        map_interrupt_handler!(idt, interrupt_0x2_handler, 0x2);
+        map_interrupt_handler!(idt, interrupt_0x3_handler, 0x3);
+        map_interrupt_handler!(idt, interrupt_0x4_handler, 0x4);
+        map_interrupt_handler!(idt, interrupt_0x5_handler, 0x5);
+        map_interrupt_handler!(idt, interrupt_0x6_handler, 0x6);
+        map_interrupt_handler!(idt, interrupt_0x7_handler, 0x7);
+        map_interrupt_handler!(idt, interrupt_0x8_handler, 0x8);
+        map_interrupt_handler!(idt, interrupt_0x9_handler, 0x9);
+        map_interrupt_handler!(idt, interrupt_0xa_handler, 0xA);
+        map_interrupt_handler!(idt, interrupt_0xb_handler, 0xB);
+        map_interrupt_handler!(idt, interrupt_0xc_handler, 0xC);
+        map_interrupt_handler!(idt, interrupt_0xd_handler, 0xD);
+        map_interrupt_handler!(idt, interrupt_0xe_handler, 0xE);
+        map_interrupt_handler!(idt, interrupt_0xf_handler, 0xF);
 
         idt
     };
@@ -89,6 +170,42 @@ pub fn enable() {
     instructions::interrupts::enable();
 }
 
+/// Sets the interrupt handler for the given index.
+pub fn set_interrupt_handler(index: InterruptIndex, handler: fn()) {
+    instructions::interrupts::without_interrupts(
+        || {
+            let mut interrupt_handlers = INTERRUPT_HANDLERS.lock();
+            let real_index = (index as u8) - PIC_1_OFFSET;
+            interrupt_handlers[real_index as usize] = handler;
+
+            clear_interrupt_mask(real_index);
+        }
+    );
+}
+
+/// Sets interrupt mask for the specified index.
+#[allow(dead_code)]
+fn set_interrupt_mask(index: u8) {
+    let mut port = Port::new(if index < PIC_1_PIN_COUNT { PIC_1_DATA_PORT } else { PIC_2_DATA_PORT });
+
+    let interrupt_line = if index < PIC_1_PIN_COUNT { index } else { index - PIC_1_PIN_COUNT };
+    unsafe {
+        let value: u8 = port.read() | (1 << interrupt_line);
+        port.write(value);
+    }
+}
+
+/// Clears interrupt mask for the specified index.
+fn clear_interrupt_mask(index: u8) {
+    let mut port = Port::new(if index < PIC_1_PIN_COUNT { PIC_1_DATA_PORT } else { PIC_2_DATA_PORT });
+
+    let interrupt_line = if index < PIC_1_PIN_COUNT { index } else { index - PIC_1_PIN_COUNT };
+    unsafe {
+        let value: u8 = port.read() & !(1 << interrupt_line);
+        port.write(value);
+    }
+}
+
 /// A handler for breakpoint exceptions.
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT");
@@ -109,22 +226,4 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     println!("{:#?}", stack_frame);
 
     hlt_loop();
-}
-
-/// An interrupt handler for timer interrupts.
-extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    unsafe { PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer as u8); }
-}
-
-/// An interrupt handler for keyboard interrupts.
-extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    const PORT_ADDR: u16 = 0x60;
-
-    let mut port = Port::new(PORT_ADDR);
-    let scancode: u8 = unsafe { port.read() };
-
-    // Add the scancode to the waiting queue.
-    keyboard::add_scancode(scancode);
-
-    unsafe { PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard as u8); }
 }

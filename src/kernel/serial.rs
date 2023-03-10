@@ -8,9 +8,9 @@ use x86_64::instructions;
 lazy_static! {
     /// Global interface for serial outputting to host system.
     static ref SERIAL_3F8: Mutex<SerialPort> = {
-        const PORT_ADDR: u16 = 0x3F8;
+        const PORT: u16 = 0x3F8;
 
-        let mut serial_port = unsafe { SerialPort::new(PORT_ADDR) };
+        let mut serial_port = unsafe { SerialPort::new(PORT) };
         serial_port.init();
 
         Mutex::new(serial_port)
