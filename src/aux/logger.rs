@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::instructions;
 
+use crate::api::vga::{self, color::Color};
 use crate::kernel::pit;
 use crate::print;
 
@@ -68,7 +69,10 @@ pub fn init(log_level: LogLevel) {
 #[doc(hidden)]
 pub fn _log(log_level: LogLevel, fmt: fmt::Arguments) {
     if log_level >= get_log_level() {
-        print!("[ {:16.7} ] {}", pit::uptime(), fmt);
+        vga::set_foreground(Color::Green);
+        print!("[ {:01$.02$} ] ", pit::uptime(), 13, 4);
+        vga::reset_foreground();
+        print!("{}", fmt);
     }
 }
 

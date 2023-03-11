@@ -23,8 +23,9 @@ use crate::aux::logger;
 use crate::aux::logger::LogLevel;
 #[cfg(test)]
 use crate::aux::testing::serene_test_panic_handler;
-use crate::kernel::{acpi, allocator, gdt, interrupts, keyboard, memory, pit, vga_buffer};
+use crate::kernel::{acpi, allocator, gdt, interrupts, keyboard, memory, pit, vga};
 
+pub mod api;
 pub mod aux;
 pub mod kernel;
 
@@ -47,7 +48,7 @@ fn panic(info: &PanicInfo) -> ! {
 }
 
 pub fn init(boot_info: &'static BootInfo) {
-    vga_buffer::clear();
+    vga::init();
 
     print!("Initialize GDT ... ");
     gdt::init();
@@ -61,7 +62,7 @@ pub fn init(boot_info: &'static BootInfo) {
     interrupts::enable();
     println!("[ ok ]");
 
-    print!("Initialize time ... ");
+    print!("Initialize PIT ... ");
     pit::init();
     println!("[ ok ]");
 

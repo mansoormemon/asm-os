@@ -7,8 +7,8 @@
 use core::panic::PanicInfo;
 
 use asm_os::{hlt_loop, println};
-use asm_os::kernel::buffer;
-use asm_os::kernel::buffer::Color;
+use asm_os::api::vga;
+use asm_os::api::vga::color::Color;
 use asm_os::aux::testing::serene_test_panic_handler;
 
 #[no_mangle]
@@ -36,21 +36,21 @@ fn test_println_many() {
 
 #[test_case]
 fn test_println_output() {
-    buffer::clear();
+    vga::clear();
     let s = "The quick brown fox jumps over the lazy dog.";
     println!("{}", s);
     for (i, c) in s.chars().enumerate() {
-        let (screen_char, _) = buffer::query_data_at(0, i).unwrap();
+        let (screen_char, _) = vga::query_data_at(0, i).unwrap();
         assert_eq!(screen_char as char, c);
     }
 }
 
 #[test_case]
 fn test_coloring() {
-    buffer::set_color_code(Color::Yellow, Color::Blue);
-    buffer::clear();
+    vga::set_color_code(Color::Yellow, Color::Blue);
+    vga::clear();
 
-    let (_, color_code) = buffer::query_data_at(0, 0).unwrap();
+    let (_, color_code) = vga::query_data_at(0, 0).unwrap();
     let expected_color_code = (Color::Blue as u8) << 4 | (Color::Yellow as u8);
     assert_eq!(color_code, expected_color_code);
 }

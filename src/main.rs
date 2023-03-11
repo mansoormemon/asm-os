@@ -11,6 +11,8 @@ use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
 
 use asm_os::{init, println};
+use asm_os::api::vga;
+use asm_os::api::vga::color::Color;
 #[cfg(test)]
 use asm_os::aux::testing::serene_test_panic_handler;
 #[cfg(not(test))]
@@ -24,9 +26,12 @@ entry_point!(kernel_main);
 pub async fn main() {}
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    vga::set_palette(vga::palette::GRUVBOX);
     init(boot_info);
 
+    vga::set_foreground(Color::Magenta);
     println!("Welcome to asmOS!");
+    vga::reset_foreground();
 
     #[cfg(test)]
     test_main();
