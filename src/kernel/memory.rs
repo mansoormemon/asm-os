@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use bootloader::BootInfo;
@@ -5,6 +27,8 @@ use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::{PhysAddr, VirtAddr};
 use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB, Translate};
+
+use crate::success;
 
 // PAGING
 //
@@ -22,18 +46,31 @@ use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PageTable, Phy
 //
 // OS Dev Wiki: https://wiki.osdev.org/Paging
 
+////////////////
+// Attributes
+////////////////
+
 /// Size of page.
 pub const PAGE_SIZE: usize = 4096;
+
+/////////////
+// Globals
+/////////////
 
 /// Physical memory offset in the virtual space.
 static PHYS_MEM_OFFSET: AtomicU64 = AtomicU64::new(u64::MAX);
 
-/// Initializes and returns the L4 page table.
-pub fn init(boot_info: &'static BootInfo) {
+///////////////
+// Utilities
+///////////////
+
+/// Initializes the required parameters for memory management.
+pub(crate) fn init(boot_info: &'static BootInfo) {
     PHYS_MEM_OFFSET.store(boot_info.physical_memory_offset, Ordering::Relaxed);
+    success!("Memory initialized");
 }
 
-/// Returns physical memory offset.
+/// Returns physical memory offset in virtual space.
 pub fn physical_memory_offset() -> u64 {
     PHYS_MEM_OFFSET.load(Ordering::Relaxed)
 }
@@ -51,14 +88,27 @@ unsafe fn get_active_l4_table() -> &'static mut PageTable {
 }
 
 /// Returns the Offset Page Table.
-pub unsafe fn mapper() -> OffsetPageTable<'static> {
+pub(crate) unsafe fn mapper() -> OffsetPageTable<'static> {
     let l4_table = get_active_l4_table();
     let phys_mem_offset = VirtAddr::new(physical_memory_offset());
 
     OffsetPageTable::new(l4_table, phys_mem_offset)
 }
 
-/// Boot Info Frame Allocator.
+/// Translates physical address into virtual address.
+pub fn phys_to_virt_addr(addr: PhysAddr) -> VirtAddr {
+    VirtAddr::new(addr.as_u64()) + PHYS_MEM_OFFSET.load(Ordering::Relaxed)
+}
+
+/// Translates virtual address into physical address.
+pub fn virt_to_phys_addr(addr: VirtAddr) -> Option<PhysAddr> {
+    let mapper = unsafe { mapper() };
+    mapper.translate_addr(addr)
+}
+
+/////////////////////////////////
+/// Boot Info Frame Allocator
+/////////////////////////////////
 pub struct BootInfoFrameAllocator {
     memory_map: &'static MemoryMap,
     next: usize,
@@ -66,7 +116,7 @@ pub struct BootInfoFrameAllocator {
 
 impl BootInfoFrameAllocator {
     /// Initializes the boot info frame allocator.
-    pub unsafe fn init(memory_map: &'static MemoryMap) -> Self {
+    pub unsafe fn new(memory_map: &'static MemoryMap) -> Self {
         BootInfoFrameAllocator {
             memory_map,
             next: 0,
@@ -90,15 +140,4 @@ unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
         self.next += 1;
         frame
     }
-}
-
-/// Translates physical address into virtual address.
-pub fn phys_to_virt_addr(addr: PhysAddr) -> VirtAddr {
-    VirtAddr::new(addr.as_u64()) + PHYS_MEM_OFFSET.load(Ordering::Relaxed)
-}
-
-/// Translates virtual address into physical address.
-pub fn virt_to_phys_addr(addr: VirtAddr) -> Option<PhysAddr> {
-    let mapper = unsafe { mapper() };
-    mapper.translate_addr(addr)
 }

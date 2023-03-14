@@ -1,3 +1,35 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+use core::arch;
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+use x86_64::instructions;
+use x86_64::instructions::port::Port;
+
+use crate::kernel::cmos::CMOS;
+use crate::kernel::interrupts::{self, InterruptIndex};
+use crate::success;
+
 // Programmable Interval Timer (PIT | Intel 8253/8254)
 //
 // The Programmable Interval Timer (PIT) chip (Intel 8253/8254) basically consists of an oscillator,
@@ -20,23 +52,22 @@
 //
 // OS Dev Wiki: https://wiki.osdev.org/Programmable_Interval_Timer
 
-use core::arch;
-use core::sync::atomic::{AtomicUsize, Ordering};
-
-use x86_64::instructions;
-use x86_64::instructions::port::Port;
-
-use crate::kernel::cmos::CMOS;
-use crate::kernel::interrupts::{self, InterruptIndex};
+//////////////////
+// Calibrations
+//////////////////
 
 /// Frequency of the PIT.
-pub const PIT_FREQUENCY: f64 = 3_579_545.0 / 3.0;
+pub const FREQUENCY: f64 = 3_579_545.0 / 3.0;
 
 /// Divider for PIT.
-const PIT_DIVIDER: usize = 1193;
+const DIVIDER: usize = 1193;
 
 /// Time between successive ticks.
-const PIT_INTERVAL: f64 = (PIT_DIVIDER as f64) / PIT_FREQUENCY;
+const INTERVAL: f64 = (DIVIDER as f64) / FREQUENCY;
+
+////////////////
+// Attributes
+////////////////
 
 /// Output channel for the PIT frequency divider.
 ///
@@ -47,46 +78,78 @@ const PIT_INTERVAL: f64 = (PIT_DIVIDER as f64) / PIT_FREQUENCY;
 /// OS Dev Wiki: https://wiki.osdev.org/Programmable_Interval_Timer#Outputs
 const OUTPUT_CHANNEL: u8 = 0;
 
+//////////////
+// Trackers
+//////////////
+
+/// Flag to check whether PIT is initialized or not.
+static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
 /// Ticks elapsed since PIT was initialized.
-static PIT_TICKS: AtomicUsize = AtomicUsize::new(0);
+static TICKS: AtomicUsize = AtomicUsize::new(0);
 
 /// The latest RTC clock update tick.
 static LAST_RTC_UPDATE: AtomicUsize = AtomicUsize::new(0);
 
-/// Returns the time between successive ticks.
-pub fn time_between_ticks() -> f64 {
-    PIT_INTERVAL
+//////////////
+// Utilites
+//////////////
+
+/// Initializes the PIT and sets the relevant interrupt handlers.
+pub(crate) fn init() {
+    // The PIT has only 16 bits that are used as frequency divider, which can represent the values from
+    // 0 to 65535. Since the frequency can't be divided by 0 in a sane way, many implementations use 0
+    // to represent the value 65536.
+    let divider = if DIVIDER < 65536 { DIVIDER } else { 0 };
+
+    // Set frequency divider.
+    set_pit_frequency_divider(divider as u16, OUTPUT_CHANNEL);
+
+    // Set interrupt handler for timer.
+    interrupts::set_interrupt_handler(InterruptIndex::Timer, timer_interrupt_handler);
+
+    // Set interrupt handler for RTC.
+    interrupts::set_interrupt_handler(InterruptIndex::RTC, rtc_interrupt_handler);
+    // Enable RTC update interrupts.
+    CMOS::new().enable_update_interrupt();
+
+    // Update flag.
+    IS_INITIALIZED.store(true, Ordering::Relaxed);
+
+    success!("PIT initialized");
 }
 
+/// Returns whether the PIT is initialized or not.
+pub(crate) fn is_initialized() -> bool { IS_INITIALIZED.load(Ordering::Relaxed) }
+
+/// Returns the time between two successive ticks.
+pub(crate) fn tick_interval() -> f64 { INTERVAL }
+
 /// Returns the ticks elapsed since PIT was initialized.
-pub fn ticks() -> usize {
-    PIT_TICKS.load(Ordering::Relaxed)
+pub(crate) fn ticks() -> usize {
+    TICKS.load(Ordering::Relaxed)
 }
 
 /// Returns the latest RTC clock update tick.
-pub fn last_rtc_update() -> usize {
-    LAST_RTC_UPDATE.load(Ordering::Relaxed)
-}
+pub(crate) fn last_rtc_update() -> usize { LAST_RTC_UPDATE.load(Ordering::Relaxed) }
 
-/// Read Time-Stamp Counter (RDTSC).
+/// Returns the Read Time-Stamp Counter (RDTSC).
 ///
 /// Reference: https://www.felixcloutier.com/x86/rdtsc
-pub fn rdtsc() -> u64 {
+pub(crate) fn rdtsc() -> u64 {
     unsafe {
         arch::x86_64::_mm_lfence();
         arch::x86_64::_rdtsc()
     }
 }
 
-/// Time elapsed since the PIT was initialized.
-pub fn uptime() -> f64 {
-    (ticks() as f64) * time_between_ticks()
-}
+/// Returns the time elapsed since the PIT was initialized.
+pub(crate) fn uptime() -> f64 { (ticks() as f64) * tick_interval() }
 
 /// Halts the CPU.
 ///
 /// Note: It restores the state of interrupts (whether enabled or disabled) after execution.
-pub fn halt() {
+pub(crate) fn halt() {
     let disabled = !instructions::interrupts::are_enabled();
     instructions::interrupts::enable_and_hlt();
     if disabled {
@@ -95,15 +158,15 @@ pub fn halt() {
 }
 
 /// Halts the CPU for the specified duration.
-pub fn sleep(seconds: f64) {
+pub(crate) fn sleep(seconds: f64) {
     let start = uptime();
     while uptime() - start < seconds {
         halt();
     }
 }
 
-/// Sets the frequency divider of the PIT.
-pub fn set_pit_frequency_divider(divider: u16, channel: u8) {
+/// Sets the frequency divider for the PIT.
+pub(crate) fn set_pit_frequency_divider(divider: u16, channel: u8) {
     instructions::interrupts::without_interrupts(
         || {
             const TOTAL_CHANNELS: usize = 3;
@@ -130,28 +193,17 @@ pub fn set_pit_frequency_divider(divider: u16, channel: u8) {
     )
 }
 
+//////////////
+// Handlers
+//////////////
+
 /// Interrupt handler for timer.
 fn timer_interrupt_handler() {
-    PIT_TICKS.fetch_add(1, Ordering::Relaxed);
+    TICKS.fetch_add(1, Ordering::Relaxed);
 }
 
 /// Interrupt handler for RTC.
 fn rtc_interrupt_handler() {
     LAST_RTC_UPDATE.store(ticks(), Ordering::Relaxed);
     CMOS::new().notify_end_of_interrupt();
-}
-
-/// Initializes the PIT and sets the relevant interrupt handlers.
-pub fn init() {
-    // The PIT has only 16 bits that are used as frequency divider, which can represent the values from
-    // 0 to 65535. Since the frequency can't be divided by 0 in a sane way, many implementations use 0
-    // to represent the value 65536.
-    let divider = if PIT_DIVIDER < 65536 { PIT_DIVIDER } else { 0 };
-
-    set_pit_frequency_divider(divider as u16, OUTPUT_CHANNEL);
-
-    interrupts::set_interrupt_handler(InterruptIndex::Timer, timer_interrupt_handler);
-
-    interrupts::set_interrupt_handler(InterruptIndex::RTC, rtc_interrupt_handler);
-    CMOS::new().enable_update_interrupt();
 }

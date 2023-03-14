@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #![no_std]
 #![cfg_attr(test, no_main)]
 #![feature(abi_x86_interrupt)]
@@ -19,8 +41,7 @@ use bootloader::BootInfo;
 use bootloader::entry_point;
 use x86_64::instructions;
 
-use crate::aux::logger;
-use crate::aux::logger::LogLevel;
+use crate::aux::logger::{self, LogLevel};
 #[cfg(test)]
 use crate::aux::testing::serene_test_panic_handler;
 use crate::kernel::{acpi, allocator, gdt, interrupts, keyboard, memory, pit, vga};
@@ -34,64 +55,27 @@ entry_point!(test_kernel_main);
 
 #[cfg(test)]
 fn test_kernel_main(boot_info: &'static BootInfo) -> ! {
-    init(boot_info);
-
+    init(boot_info, false);
     test_main();
-
     hlt_loop();
 }
 
 #[cfg(test)]
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    serene_test_panic_handler(info);
-}
+fn panic(info: &PanicInfo) -> ! { serene_test_panic_handler(info); }
 
-pub fn init(boot_info: &'static BootInfo) {
+/// Initializes all sub-modules.
+pub fn init(boot_info: &'static BootInfo, silent_boot: bool) {
     vga::init();
-
-    print!("Initialize GDT ... ");
+    logger::init(if silent_boot { LogLevel::Quiet } else { LogLevel::Apprise });
     gdt::init();
-    println!("[ ok ]");
-
-    print!("Initialize interrupts ... ");
     interrupts::init();
-    println!("[ ok ]");
-
-    print!("Enable interrupts ... ");
     interrupts::enable();
-    println!("[ ok ]");
-
-    print!("Initialize PIT ... ");
     pit::init();
-    println!("[ ok ]");
-
-    print!("Initialize logger ... ");
-    logger::init(LogLevel::INFO);
-    println!("[ ok ]");
-
-    println!();
-
-    log!( LogLevel::INFO , "Initialize memory ... ");
     memory::init(boot_info);
-    println!("[ ok ]");
-
-    log!(LogLevel::INFO , "Initialize allocator ... ");
     allocator::init(boot_info);
-    println!("[ ok ]");
-
-    log!( LogLevel::INFO, "Initialize ACPI ... ");
-    if let Err(err_code) = acpi::init() {
-        println!("[ failure ], error={:?}", err_code);
-    } else {
-        println!("[ ok ]");
-    }
-
-    log!( LogLevel::INFO, "Initialize keyboard ... ");
+    acpi::init();
     keyboard::init();
-    println!(" [ ok ] ");
-
-    println!();
 }
 
 /// Halts execution of CPU until next interrupt.

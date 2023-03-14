@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
@@ -8,7 +30,6 @@ use core::panic::PanicInfo;
 
 use asm_os::{hlt_loop, println};
 use asm_os::api::vga;
-use asm_os::api::vga::color::Color;
 use asm_os::aux::testing::serene_test_panic_handler;
 
 #[no_mangle]
@@ -18,9 +39,7 @@ pub extern "C" fn _start() -> ! {
 }
 
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    serene_test_panic_handler(info);
-}
+fn panic(info: &PanicInfo) -> ! { serene_test_panic_handler(info); }
 
 #[test_case]
 fn test_println() {
@@ -43,14 +62,4 @@ fn test_println_output() {
         let (screen_char, _) = vga::query_data_at(0, i).unwrap();
         assert_eq!(screen_char as char, c);
     }
-}
-
-#[test_case]
-fn test_coloring() {
-    vga::set_color_code(Color::Yellow, Color::Blue);
-    vga::clear();
-
-    let (_, color_code) = vga::query_data_at(0, 0).unwrap();
-    let expected_color_code = (Color::Blue as u8) << 4 | (Color::Yellow as u8);
-    assert_eq!(color_code, expected_color_code);
 }

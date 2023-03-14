@@ -1,27 +1,43 @@
-use core::fmt::{Display, Formatter};
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 use core::hint::spin_loop;
 
 use x86_64::instructions;
 use x86_64::instructions::port::Port;
 
-// Complementary Metal-Oxide Semiconductor (CMOS)
-//
-// CMOS is a tiny bit of very low power static memory that lives on the same chip as the
-// Real-Time Clock (RTC). It was introduced to IBM PC AT in 1984 which used Motorola MC146818A RTC.
-//
-// CMOS (and the RTC) can only be accessed through IO Ports 0x70 and 0x71.
-//
-// The function of the CMOS memory is to store 50 (or 114) bytes of "Setup" information for the BIOS
-// while the computer is turned off -- because there is a separate battery that keeps the Clock and
-// the CMOS information active.
-//
-// Reference: https://stanislavs.org/helppc/cmos_ram.html
+////////////////////
+// Configurations
+////////////////////
 
 /// Current century.
 const RTC_CENTURY: u16 = 2000;
 
-/// Real-Time Clock (RTC).
-#[derive(PartialEq)]
+/////////////////////////////
+/// Real-Time Clock (RTC)
+/////////////////////////////
+///
+/// OS Dev Wiki: https://wiki.osdev.org/RTC
+#[derive(PartialEq, Eq)]
 pub struct RTC {
     pub year: u16,
     pub month: u8,
@@ -33,30 +49,16 @@ pub struct RTC {
 
 impl RTC {
     /// Creates a new object.
-    pub fn new() -> Self {
-        CMOS::new().rtc()
-    }
+    pub fn new() -> Self { CMOS::new().rtc() }
 
-    /// Syncs itself with the CMOS chip.
-    pub fn sync(&mut self) {
-        *self = RTC::new();
-    }
+    /// Syncs with the CMOS chip.
+    pub fn sync(&mut self) { *self = RTC::new(); }
 }
 
-impl Display for RTC {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f,
-               "{{ YYYY={:04}, MM={:02}, DD={:02}, HH={:02}, MM={:02}, SS={:02} }}",
-               self.year,
-               self.month,
-               self.day,
-               self.hour,
-               self.minute,
-               self.second)
-    }
-}
-
-/// Register (CMOS - RAM).
+/////////////////////////////
+/// Register (CMOS - RAM)
+/////////////////////////////
+#[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 enum Register {
     Second = 0x00,
@@ -70,7 +72,10 @@ enum Register {
     C = 0x0C,
 }
 
-/// Interrupts (CMOS).
+/////////////////////////
+/// Interrupts (CMOS)
+/////////////////////////
+#[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 enum Interrupt {
     Periodic = 0x40,
@@ -78,7 +83,22 @@ enum Interrupt {
     Update = 0x10,
 }
 
-/// Complementary Metal-Oxide Semiconductor (CMOS).
+//////////////////////////////////////////////////////
+/// Complementary Metal-Oxide Semiconductor (CMOS)
+//////////////////////////////////////////////////////
+///
+/// Complementary Metal-Oxide Semiconductor (CMOS)
+///
+/// CMOS is a tiny bit of very low power static memory that lives on the same chip as the
+/// Real-Time Clock (RTC). It was introduced to IBM PC AT in 1984 which used Motorola MC146818A RTC.
+///
+/// CMOS (and the RTC) can only be accessed through IO Ports 0x70 and 0x71.
+///
+/// The function of the CMOS memory is to store 50 (or 114) bytes of "Setup" information for the BIOS
+/// while the computer is turned off -- because there is a separate battery that keeps the Clock and
+/// the CMOS information active.
+///
+/// Reference: https://stanislavs.org/helppc/cmos_ram.html
 pub struct CMOS {
     addr: Port<u8>,
     data: Port<u8>,
@@ -96,7 +116,7 @@ impl CMOS {
         }
     }
 
-    /// Returns a newly created raw Real-Time Clock (RTC).
+    /// Returns a raw Real-Time Clock (RTC).
     fn rtc_raw(&mut self) -> RTC {
         RTC {
             second: self.read_register(Register::Second),
@@ -108,7 +128,7 @@ impl CMOS {
         }
     }
 
-    /// Returns a newly created deciphered Real-Time Clock (RTC).
+    /// Returns a deciphered Real-Time Clock (RTC).
     pub fn rtc(&mut self) -> RTC {
         const SRB_BCD_MODE: u8 = 0x04;
         const SRB_H12_MODE: u8 = 0x02;
@@ -148,6 +168,7 @@ impl CMOS {
             rtc.hour = h12_to_h24(rtc.hour);
         }
 
+        // Add century.
         rtc.year += RTC_CENTURY;
 
         rtc
@@ -171,19 +192,13 @@ impl CMOS {
     }
 
     /// Enables periodic interrupts.
-    pub fn enable_periodic_interrupt(&mut self) {
-        self.enable_interrupt(Interrupt::Periodic);
-    }
+    pub fn enable_periodic_interrupt(&mut self) { self.enable_interrupt(Interrupt::Periodic); }
 
     /// Enables alarm interrupts.
-    pub fn enable_alarm_interrupt(&mut self) {
-        self.enable_interrupt(Interrupt::Alarm);
-    }
+    pub fn enable_alarm_interrupt(&mut self) { self.enable_interrupt(Interrupt::Alarm); }
 
     /// Enables update interrupts.
-    pub fn enable_update_interrupt(&mut self) {
-        self.enable_interrupt(Interrupt::Update);
-    }
+    pub fn enable_update_interrupt(&mut self) { self.enable_interrupt(Interrupt::Update); }
 
     /// Enables the specified interrupt.
     fn enable_interrupt(&mut self, interrupt: Interrupt) {
@@ -191,8 +206,8 @@ impl CMOS {
         instructions::interrupts::without_interrupts(
             || {
                 self.disable_nmi();
-                let prev = self.read_register(Register::B);
-                self.write_register(Register::B, prev | interrupt as u8);
+                let byte = self.read_register(Register::B);
+                self.write_register(Register::B, byte | interrupt as u8);
                 self.enable_nmi();
                 self.notify_end_of_interrupt();
             }

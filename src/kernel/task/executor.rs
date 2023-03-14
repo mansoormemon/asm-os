@@ -8,10 +8,16 @@ use x86_64::instructions;
 
 use crate::kernel::task::{Task, TaskID};
 
+////////////////
+// Attributes
+////////////////
+
 /// Size of waiting queue for tasks.
 pub const QUEUE_SIZE: usize = 128;
 
-/// Executor.
+////////////////
+/// Executor
+////////////////
 pub struct Executor {
     tasks: BTreeMap<TaskID, Task>,
     task_queue: Arc<ArrayQueue<TaskID>>,
@@ -54,11 +60,9 @@ impl Executor {
                 Some(task) => task,
                 None => continue,
             };
-            let waker = waker_cache
-                .entry(task_id)
-                .or_insert_with(
-                    || WakerWrapper::new(task_id, task_queue.clone())
-                );
+            let waker = waker_cache.entry(task_id).or_insert_with(
+                || WakerWrapper::new(task_id, task_queue.clone())
+            );
             let mut context = Context::from_waker(waker);
             match task.poll(&mut context) {
                 Poll::Ready(()) => {
@@ -81,14 +85,16 @@ impl Executor {
     }
 }
 
-/// Waker Wrapper.
+/////////////////////
+/// Waker Wrapper
+/////////////////////
 struct WakerWrapper {
     task_id: TaskID,
     task_queue: Arc<ArrayQueue<TaskID>>,
 }
 
 impl WakerWrapper {
-    /// Creates a new Waker.
+    /// Creates a new `Waker`.
     fn new(task_id: TaskID, task_queue: Arc<ArrayQueue<TaskID>>) -> Waker {
         Waker::from(Arc::new(WakerWrapper {
             task_id,

@@ -1,9 +1,33 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 use core::{mem, ptr};
 use core::alloc::{GlobalAlloc, Layout};
 
 use crate::kernel::allocator::{align_up, Locked};
 
-/// List Node.
+/////////////////
+/// List Node
+/////////////////
 struct ListNode {
     size: usize,
     next: Option<&'static mut ListNode>,
@@ -12,21 +36,22 @@ struct ListNode {
 impl ListNode {
     /// Creates a new object.
     const fn new(size: usize) -> Self {
-        ListNode { size, next: None }
+        ListNode {
+            size,
+            next: None,
+        }
     }
 
     /// Returns the start address of the node.
-    fn start_addr(&self) -> usize {
-        self as *const Self as usize
-    }
+    fn start_addr(&self) -> usize { self as *const Self as usize }
 
     /// Returns the end address of the node.
-    fn end_addr(&self) -> usize {
-        self.start_addr() + self.size
-    }
+    fn end_addr(&self) -> usize { self.start_addr() + self.size }
 }
 
-/// Free list allocator.
+/////////////////////////////
+/// Linked List Allocator
+/////////////////////////////
 pub struct LinkedListAllocator {
     head: ListNode,
 }
@@ -44,7 +69,7 @@ impl LinkedListAllocator {
         self.add_free_region(heap_start, heap_size);
     }
 
-    /// Add a free region to the list.
+    /// Adds a free region to the list.
     unsafe fn add_free_region(&mut self, addr: usize, size: usize) {
         assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
         assert!(size >= mem::size_of::<ListNode>());
@@ -56,10 +81,9 @@ impl LinkedListAllocator {
         self.head.next = Some(&mut *node_ptr);
     }
 
-    /// Find a suitable region from the list.
+    /// Finds a suitable region from the list.
     fn find_region(&mut self, size: usize, align: usize) -> Option<(&'static mut ListNode, usize)> {
         let mut current = &mut self.head;
-
         while let Some(ref mut region) = current.next {
             if let Ok(alloc_start) = Self::alloc_from_region(&region, size, align) {
                 let next = region.next.take();
@@ -73,7 +97,7 @@ impl LinkedListAllocator {
         None
     }
 
-    /// Allocate memory from the specified region.
+    /// Allocates memory from the specified region.
     fn alloc_from_region(region: &ListNode, size: usize, align: usize) -> Result<usize, ()> {
         let alloc_start = align_up(region.start_addr(), align);
         let alloc_end = alloc_start.checked_add(size).ok_or(())?;
@@ -90,13 +114,9 @@ impl LinkedListAllocator {
         Ok(alloc_start)
     }
 
-    /// Return the size and alignment from the layout.
+    /// Returns the size and alignment from the layout.
     fn size_align(layout: Layout) -> (usize, usize) {
-        let layout = layout
-            .align_to(mem::align_of::<ListNode>())
-            .expect("adjusting alignment failed")
-            .pad_to_align();
-
+        let layout = layout.align_to(mem::align_of::<ListNode>()).expect("adjusting alignment failed").pad_to_align();
         let size = layout.size().max(mem::size_of::<ListNode>());
         (size, layout.align())
     }

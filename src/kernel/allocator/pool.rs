@@ -1,18 +1,48 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 use core::{mem, ptr};
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::NonNull;
 
 use crate::kernel::allocator::Locked;
 
-/// List Node.
-struct ListNode {
-    next: Option<&'static mut ListNode>,
-}
+////////////////
+// Attributes
+////////////////
 
 /// Block size of available buckets.
 const BLOCK_SIZES: &[usize] = &[8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
 
-/// Pool Allocator.
+/////////////////
+/// List Node
+/////////////////
+struct ListNode {
+    next: Option<&'static mut ListNode>,
+}
+
+//////////////////////
+/// Pool Allocator
+//////////////////////
 pub struct PoolAllocator {
     buckets: [Option<&'static mut ListNode>; BLOCK_SIZES.len()],
     fallback_allocator: linked_list_allocator::Heap,
@@ -34,7 +64,7 @@ impl PoolAllocator {
         self.fallback_allocator.init(heap_start, heap_end);
     }
 
-    /// Allocate memory using fallback allocator.
+    /// Allocates memory using fallback allocator.
     fn fallback_alloc(&mut self, layout: Layout) -> *mut u8 {
         match self.fallback_allocator.allocate_first_fit(layout) {
             Ok(ptr) => ptr.as_ptr(),
@@ -42,7 +72,7 @@ impl PoolAllocator {
         }
     }
 
-    /// Deallocate memory allocated by the fallback allocator.
+    /// Deallocates memory allocated by the fallback allocator.
     unsafe fn fallback_dealloc(&mut self, ptr: *mut u8, layout: Layout) {
         let ptr = NonNull::new(ptr).unwrap();
         self.fallback_allocator.deallocate(ptr, layout);

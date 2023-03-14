@@ -1,5 +1,27 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 /////////////
-/// Color ///
+/// Color
 /////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -23,7 +45,7 @@ pub enum Color {
 }
 
 impl Color {
-    /// Creates a new object from index.
+    /// Creates a new object from the given index.
     pub fn from_index(index: usize) -> Color {
         match index {
             0x0 => Color::Black,
@@ -46,7 +68,7 @@ impl Color {
         }
     }
 
-    /// Creates a new object from ANSI code.
+    /// Creates a new object from the given ANSI code.
     pub fn from_ansi(code: u8) -> Color {
         match code {
             30 => Color::Black,
@@ -69,7 +91,29 @@ impl Color {
         }
     }
 
-    /// Returns the corresponding VGA register for the color.
+    /// Returns the corresponding ANSI code.
+    pub fn to_ansi(&self) -> u8 {
+        match self {
+            Color::Black => 30,
+            Color::Blue => 34,
+            Color::Green => 32,
+            Color::Cyan => 36,
+            Color::Red => 31,
+            Color::Magenta => 35,
+            Color::Brown => 33,
+            Color::LightGray => 37,
+            Color::DarkGray => 90,
+            Color::LightBlue => 94,
+            Color::LightGreen => 92,
+            Color::LightCyan => 96,
+            Color::LightRed => 91,
+            Color::Pink => 95,
+            Color::Yellow => 93,
+            Color::White => 97,
+        }
+    }
+
+    /// Returns the associated VGA register.
     pub fn to_vga_register(&self) -> u8 {
         match self {
             Color::Black => 0x00,

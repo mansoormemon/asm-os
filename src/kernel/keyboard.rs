@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2023 Mansoor Ahmed Memon
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
@@ -10,7 +32,7 @@ use pc_keyboard::{DecodedKey, HandleControl, Keyboard, layouts, ScancodeSet1};
 use spin::Mutex;
 use x86_64::instructions::port::Port;
 
-use crate::{print, println};
+use crate::{print, success, warning};
 use crate::kernel::interrupts::{self, InterruptIndex};
 
 /// Capacity of the scancode waiting queue.
@@ -21,15 +43,15 @@ static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
 static WAKER: AtomicWaker = AtomicWaker::new();
 
 /// Adds the given scancode to the waiting queue.
-pub(crate) fn add_scancode(scancode: u8) {
+fn add_scancode(scancode: u8) {
     if let Ok(queue) = SCANCODE_QUEUE.try_get() {
         if let Ok(_) = queue.push(scancode) {
             WAKER.wake();
         } else {
-            println!("WARNING: scancode queue full; dropping keyboard input");
+            warning!("scancode queue full; dropping keyboard input");
         }
     } else {
-        println!("WARNING: scancode queue uninitialized");
+        warning!("scancode queue uninitialized");
     }
 }
 
@@ -46,9 +68,6 @@ pub struct ScancodeStream {
 impl ScancodeStream {
     /// Creates a new object.
     pub fn new() -> Self {
-        SCANCODE_QUEUE.try_init_once(
-            || ArrayQueue::new(SCANCODE_QUEUE_CAPACITY)
-        ).expect("asm_os::kernel::keyboard::ScancodeStream::new should only be called once");
         ScancodeStream { __unused: () }
     }
 }
@@ -57,7 +76,7 @@ impl Stream for ScancodeStream {
     type Item = u8;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let queue = SCANCODE_QUEUE.try_get().expect("asm_os::kernel::keyboard: scancode queue uninitialized");
+        let queue = SCANCODE_QUEUE.try_get().expect("scancode queue uninitialized");
 
         if let Ok(scancode) = queue.pop() {
             return Poll::Ready(Some(scancode));
@@ -104,6 +123,12 @@ fn keyboard_interrupt_handler() {
     add_scancode(scancode);
 }
 
-pub fn init() {
+pub(crate) fn init() {
+    SCANCODE_QUEUE.try_init_once(
+        || ArrayQueue::new(SCANCODE_QUEUE_CAPACITY)
+    ).expect("scancode queue should only be initialized once");
+    success!("Scancode queue initialized");
+
     interrupts::set_interrupt_handler(InterruptIndex::Keyboard, keyboard_interrupt_handler);
+    success!("Keyboard initialized");
 }
