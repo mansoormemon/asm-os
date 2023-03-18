@@ -20,6 +20,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+use core::str::FromStr;
+
+/////////////
+// Globals
+/////////////
+
+/// Number of supported styles.
+pub const TOTAL_STYLES: usize = 2;
+
+// List of styles.
+pub const STYLES: [Style; TOTAL_STYLES] = [
+    Style::Underscore,
+    Style::Block
+];
+
 /////////////
 /// Style
 /////////////
@@ -31,20 +46,43 @@ pub enum Style {
 }
 
 impl Style {
-    /// Creates a new object from the given index.
-    pub fn from_index(index: usize) -> Self {
-        match index {
-            0x0 => Style::Underscore,
-            0x1 => Style::Block,
-            _ => Style::Underscore,
+    /// Creates a new object from enum index.
+    pub fn from_index(idx: u8) -> Result<Self, ()> {
+        match idx {
+            0x0 => Ok(Self::Underscore),
+            0x1 => Ok(Self::Block),
+            _ => Err(()),
+        }
+    }
+
+    /// Returns the object as an enum index.
+    pub fn as_u8(&self) -> u8 { (*self) as u8 }
+
+    /// Returns the object as a primitive string.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Underscore => "underscore",
+            Self::Block => "block",
         }
     }
 
     /// Returns the scanline bounds.
     pub fn scanline_bounds(&self) -> (u8, u8) {
         match self {
-            Style::Underscore => (0xD, 0xE),
-            Style::Block => (0x1, 0xE),
+            Self::Underscore => (0xD, 0xE),
+            Self::Block => (0x1, 0xE),
+        }
+    }
+}
+
+impl FromStr for Style {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "underscore" => Ok(Self::Underscore),
+            "block" => Ok(Self::Block),
+            _ => Err(())
         }
     }
 }

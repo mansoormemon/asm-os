@@ -24,7 +24,8 @@ use alloc::alloc::Layout;
 
 use bootloader::BootInfo;
 use spin::{Mutex, MutexGuard};
-use x86_64::structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB};
+use x86_64::structures::paging::{FrameAllocator, Mapper};
+use x86_64::structures::paging::{Page, PageTableFlags, Size4KiB};
 use x86_64::structures::paging::mapper::MapToError;
 use x86_64::VirtAddr;
 
@@ -32,8 +33,7 @@ pub use bump::BumpAllocator;
 pub use linked_list::LinkedListAllocator;
 pub use pool::PoolAllocator;
 
-use crate::aux::units::Unit;
-use crate::kernel::memory;
+use crate::arch::x86::kernel::memory;
 use crate::success;
 
 mod bump;
@@ -47,7 +47,7 @@ mod pool;
 /// Start address of the the heap in the virtual space.
 pub const HEAP_START: usize = 0x4444_4444_0000;
 /// Size of heap.
-pub const HEAP_SIZE: usize = Unit::MiB as usize;
+pub const HEAP_SIZE: usize = 0x100000;
 /// End address of heap in the virtual space.
 pub const HEAP_END: usize = HEAP_START + HEAP_SIZE;
 

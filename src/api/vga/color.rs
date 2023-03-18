@@ -20,6 +20,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+use core::str::FromStr;
+
+/////////////
+// Globals
+/////////////
+
+/// Number of supported colors.
+pub const TOTAL_COLORS: usize = 16;
+
+/// List of colors.
+pub const COLORS: [Color; TOTAL_COLORS] = [
+    Color::Black,
+    Color::Blue,
+    Color::Green,
+    Color::Cyan,
+    Color::Red,
+    Color::Magenta,
+    Color::Brown,
+    Color::LightGray,
+    Color::DarkGray,
+    Color::LightBlue,
+    Color::LightGreen,
+    Color::LightCyan,
+    Color::LightRed,
+    Color::Pink,
+    Color::Yellow,
+    Color::White
+];
+
 /////////////
 /// Color
 /////////////
@@ -45,93 +74,144 @@ pub enum Color {
 }
 
 impl Color {
-    /// Creates a new object from the given index.
-    pub fn from_index(index: usize) -> Color {
-        match index {
-            0x0 => Color::Black,
-            0x1 => Color::Blue,
-            0x2 => Color::Green,
-            0x3 => Color::Cyan,
-            0x4 => Color::Red,
-            0x5 => Color::Magenta,
-            0x6 => Color::Brown,
-            0x7 => Color::LightGray,
-            0x8 => Color::DarkGray,
-            0x9 => Color::LightBlue,
-            0xA => Color::LightGreen,
-            0xB => Color::LightCyan,
-            0xC => Color::LightRed,
-            0xD => Color::Pink,
-            0xE => Color::Yellow,
-            0xF => Color::White,
-            _ => Color::Black,
+    /// Creates a new object from enum index.
+    pub fn from_index(idx: u8) -> Result<Self, ()> {
+        match idx {
+            0x0 => Ok(Self::Black),
+            0x1 => Ok(Self::Blue),
+            0x2 => Ok(Self::Green),
+            0x3 => Ok(Self::Cyan),
+            0x4 => Ok(Self::Red),
+            0x5 => Ok(Self::Magenta),
+            0x6 => Ok(Self::Brown),
+            0x7 => Ok(Self::LightGray),
+            0x8 => Ok(Self::DarkGray),
+            0x9 => Ok(Self::LightBlue),
+            0xA => Ok(Self::LightGreen),
+            0xB => Ok(Self::LightCyan),
+            0xC => Ok(Self::LightRed),
+            0xD => Ok(Self::Pink),
+            0xE => Ok(Self::Yellow),
+            0xF => Ok(Self::White),
+            _ => Err(()),
         }
     }
 
-    /// Creates a new object from the given ANSI code.
-    pub fn from_ansi(code: u8) -> Color {
+    /// Creates a new object from ANSI code.
+    pub fn from_ansi(code: u8) -> Result<Self, ()> {
         match code {
-            30 => Color::Black,
-            31 => Color::Red,
-            32 => Color::Green,
-            33 => Color::Brown,
-            34 => Color::Blue,
-            35 => Color::Magenta,
-            36 => Color::Cyan,
-            37 => Color::LightGray,
-            90 => Color::DarkGray,
-            91 => Color::LightRed,
-            92 => Color::LightGreen,
-            93 => Color::Yellow,
-            94 => Color::LightBlue,
-            95 => Color::Pink,
-            96 => Color::LightCyan,
-            97 => Color::White,
-            _ => Color::Black,
+            30 => Ok(Self::Black),
+            31 => Ok(Self::Red),
+            32 => Ok(Self::Green),
+            33 => Ok(Self::Brown),
+            34 => Ok(Self::Blue),
+            35 => Ok(Self::Magenta),
+            36 => Ok(Self::Cyan),
+            37 => Ok(Self::LightGray),
+            90 => Ok(Self::DarkGray),
+            91 => Ok(Self::LightRed),
+            92 => Ok(Self::LightGreen),
+            93 => Ok(Self::Yellow),
+            94 => Ok(Self::LightBlue),
+            95 => Ok(Self::Pink),
+            96 => Ok(Self::LightCyan),
+            97 => Ok(Self::White),
+            _ => Err(()),
+        }
+    }
+
+    /// Returns the object as an enum index.
+    pub fn as_u8(&self) -> u8 { (*self) as u8 }
+
+    /// Returns the object as a primitive string.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Black => "black",
+            Self::Blue => "blue",
+            Self::Green => "green",
+            Self::Cyan => "cyan",
+            Self::Red => "red",
+            Self::Magenta => "magenta",
+            Self::Brown => "brown",
+            Self::LightGray => "light-gray",
+            Self::DarkGray => "dark-gray",
+            Self::LightBlue => "light-blue",
+            Self::LightGreen => "light-green",
+            Self::LightCyan => "light-cyan",
+            Self::LightRed => "light-red",
+            Self::Pink => "pink",
+            Self::Yellow => "yellow",
+            Self::White => "white",
         }
     }
 
     /// Returns the corresponding ANSI code.
     pub fn to_ansi(&self) -> u8 {
         match self {
-            Color::Black => 30,
-            Color::Blue => 34,
-            Color::Green => 32,
-            Color::Cyan => 36,
-            Color::Red => 31,
-            Color::Magenta => 35,
-            Color::Brown => 33,
-            Color::LightGray => 37,
-            Color::DarkGray => 90,
-            Color::LightBlue => 94,
-            Color::LightGreen => 92,
-            Color::LightCyan => 96,
-            Color::LightRed => 91,
-            Color::Pink => 95,
-            Color::Yellow => 93,
-            Color::White => 97,
+            Self::Black => 30,
+            Self::Blue => 34,
+            Self::Green => 32,
+            Self::Cyan => 36,
+            Self::Red => 31,
+            Self::Magenta => 35,
+            Self::Brown => 33,
+            Self::LightGray => 37,
+            Self::DarkGray => 90,
+            Self::LightBlue => 94,
+            Self::LightGreen => 92,
+            Self::LightCyan => 96,
+            Self::LightRed => 91,
+            Self::Pink => 95,
+            Self::Yellow => 93,
+            Self::White => 97,
         }
     }
 
     /// Returns the associated VGA register.
-    pub fn to_vga_register(&self) -> u8 {
+    pub fn associated_vga_register(&self) -> u8 {
         match self {
-            Color::Black => 0x00,
-            Color::Blue => 0x01,
-            Color::Green => 0x02,
-            Color::Cyan => 0x03,
-            Color::Red => 0x04,
-            Color::Magenta => 0x05,
-            Color::Brown => 0x14,
-            Color::LightGray => 0x07,
-            Color::DarkGray => 0x38,
-            Color::LightBlue => 0x39,
-            Color::LightGreen => 0x3A,
-            Color::LightCyan => 0x3B,
-            Color::LightRed => 0x3C,
-            Color::Pink => 0x3D,
-            Color::Yellow => 0x3E,
-            Color::White => 0x3F,
+            Self::Black => 0x00,
+            Self::Blue => 0x01,
+            Self::Green => 0x02,
+            Self::Cyan => 0x03,
+            Self::Red => 0x04,
+            Self::Magenta => 0x05,
+            Self::Brown => 0x14,
+            Self::LightGray => 0x07,
+            Self::DarkGray => 0x38,
+            Self::LightBlue => 0x39,
+            Self::LightGreen => 0x3A,
+            Self::LightCyan => 0x3B,
+            Self::LightRed => 0x3C,
+            Self::Pink => 0x3D,
+            Self::Yellow => 0x3E,
+            Self::White => 0x3F,
+        }
+    }
+}
+
+impl FromStr for Color {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "black" => Ok(Self::Black),
+            "blue" => Ok(Self::Blue),
+            "green" => Ok(Self::Green),
+            "cyan" => Ok(Self::Cyan),
+            "red" => Ok(Self::Red),
+            "magenta" => Ok(Self::Magenta),
+            "brown" => Ok(Self::Brown),
+            "light-gray" => Ok(Self::LightGray),
+            "dark-gray" => Ok(Self::DarkGray),
+            "light-blue" => Ok(Self::LightBlue),
+            "light-green" => Ok(Self::LightGreen),
+            "light-cyan" => Ok(Self::LightCyan),
+            "light-red" => Ok(Self::LightRed),
+            "pink" => Ok(Self::Pink),
+            "yellow" => Ok(Self::Yellow),
+            "white" => Ok(Self::White),
+            _ => Err(()),
         }
     }
 }

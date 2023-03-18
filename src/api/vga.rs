@@ -25,9 +25,8 @@ use x86_64::instructions;
 use crate::api::vga::color::Color;
 use crate::api::vga::font::Font;
 use crate::api::vga::palette::Palette;
-use crate::kernel;
-use crate::kernel::error::Error;
-use crate::kernel::vga::WRITER;
+use crate::drv::opd;
+use crate::drv::opd::vga::WRITER;
 
 pub mod color;
 pub mod cursor;
@@ -140,7 +139,7 @@ pub fn reset_color_code() {
 }
 
 /// Returns data at the specified position from the VGA buffer.
-pub fn query_data_at(row: usize, col: usize) -> Result<(u8, u8), Error> {
+pub fn query_data_at(row: usize, col: usize) -> Result<(u8, u8), ()> {
     instructions::interrupts::without_interrupts(
         || { WRITER.lock().query_data_at(row, col) }
     )
@@ -168,31 +167,31 @@ pub fn clear() {
 }
 
 /// Returns whether the cursor is enabled or not.
-pub fn is_cursor_enabled() -> bool { kernel::vga::is_cursor_enabled() }
+pub fn is_cursor_enabled() -> bool { opd::vga::is_cursor_enabled() }
 
 /// Enables the cursor.
-pub fn enable_cursor() { kernel::vga::enable_cursor(); }
+pub fn enable_cursor() { opd::vga::enable_cursor(); }
 
 /// Disables the cursor.
-pub fn disable_cursor() { kernel::vga::disable_cursor(); }
+pub fn disable_cursor() { opd::vga::disable_cursor(); }
 
 /// Returns the current tab width.
-pub fn get_tab_width() -> u8 { kernel::vga::get_tab_width() }
+pub fn get_tab_width() -> u8 { opd::vga::get_tab_width() }
 
 /// Sets tab width.
-pub fn set_tab_width(tab_width: u8) { kernel::vga::set_tab_width(tab_width); }
+pub fn set_tab_width(tab_width: u8) { opd::vga::set_tab_width(tab_width); }
 
 /// Resets the tab width.
-pub fn reset_tab_width() { kernel::vga::reset_tab_width(); }
+pub fn reset_tab_width() { opd::vga::reset_tab_width(); }
 
 /// Returns the current cursor style.
-pub fn get_cursor_style() -> cursor::Style { kernel::vga::get_cursor_style() }
+pub fn get_cursor_style() -> cursor::Style { opd::vga::get_cursor_style() }
 
 /// Sets the cursor style.
-pub fn set_cursor_style(cursor_style: cursor::Style) { kernel::vga::set_cursor_style(cursor_style); }
+pub fn set_cursor_style(cursor_style: cursor::Style) { opd::vga::set_cursor_style(cursor_style); }
 
 /// Resets the cursor style.
-pub fn reset_cursor_style() { kernel::vga::reset_cursor_style(); }
+pub fn reset_cursor_style() { opd::vga::reset_cursor_style(); }
 
 /// Sets the location for the underline.
-pub fn set_underline_location(location: u8) { kernel::vga::set_underline_location(location); }
+pub fn set_underline_location(location: u8) { opd::vga::set_underline_location(location); }

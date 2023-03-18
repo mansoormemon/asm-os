@@ -20,14 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-////////////
-/// Unit
-////////////
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(usize)]
-pub enum Unit {
-    KiB = 0x400,
-    MiB = 0x100000,
-    GiB = 0x40000000,
-    TiB = 0x10000000000,
-}
+pub mod clk;
+pub mod ipd;
+pub mod opd;

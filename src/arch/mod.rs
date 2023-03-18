@@ -20,7 +20,4 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-pub mod emulator;
-pub mod logger;
-pub mod testing;
-pub mod error;
+pub mod x86;

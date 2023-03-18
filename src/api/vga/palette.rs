@@ -20,34 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crate::api::vga::color::Color;
+use crate::api::vga::color::TOTAL_COLORS;
 
 /////////////
 // Globals
 /////////////
 
-/// Palette Size.
-pub const PALETTE_SIZE: usize = 16;
-
-/// Colors.
-pub const COLORS: [Color; PALETTE_SIZE] = [
-    Color::Black,
-    Color::Blue,
-    Color::Green,
-    Color::Cyan,
-    Color::Red,
-    Color::Magenta,
-    Color::Brown,
-    Color::LightGray,
-    Color::DarkGray,
-    Color::LightBlue,
-    Color::LightGreen,
-    Color::LightCyan,
-    Color::LightRed,
-    Color::Pink,
-    Color::Yellow,
-    Color::White
-];
+/// Size of palette.
+pub const PALETTE_SIZE: usize = TOTAL_COLORS;
 
 ///////////////
 /// Palette

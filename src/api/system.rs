@@ -20,59 +20,53 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crate::kernel;
+use core::arch::asm;
+
+use crate::arch::x86::kernel;
+use crate::drv::clk;
 
 ///////////////
 // Utilities
 ///////////////
 
 /// Returns where the PIT is initialized or not.
-pub fn is_timer_initialized() -> bool {
-    kernel::pit::is_initialized()
-}
+pub fn is_timer_initialized() -> bool { clk::pit::is_initialized() }
 
 /// Returns the duration between successive ticks.
-pub fn tick_interval() -> f64 {
-    kernel::pit::tick_interval()
-}
+pub fn tick_interval() -> f64 { clk::pit::tick_interval() }
 
 /// Returns the ticks elapsed since PIT was initialized.
-pub fn ticks() -> usize {
-    kernel::pit::ticks()
-}
+pub fn ticks() -> usize { clk::pit::ticks() }
 
 /// Returns the latest RTC clock update tick.
-pub fn last_rtc_update() -> usize {
-    kernel::pit::last_rtc_update()
-}
+pub fn last_rtc_update() -> usize { clk::pit::last_rtc_update() }
 
 /// Returns the Read Time-Stamp Counter (RDTSC).
 ///
 /// Reference: https://www.felixcloutier.com/x86/rdtsc
-pub fn rdtsc() -> u64 {
-    kernel::pit::rdtsc()
-}
+pub fn rdtsc() -> u64 { clk::pit::rdtsc() }
 
 /// Returns the time elapsed since the PIT was initialized.
-pub fn uptime() -> f64 {
-    kernel::pit::uptime()
-}
+pub fn uptime() -> f64 { clk::pit::uptime() }
 
 /// Halts the CPU.
 ///
 /// Note: It restores the state of interrupts (whether enabled or disabled) after execution.
-pub fn halt() {
-    kernel::pit::halt();
-}
+pub fn halt() { clk::pit::halt(); }
 
 /// Halts the CPU for the specified duration.
-pub fn sleep(seconds: f64) {
-    kernel::pit::sleep(seconds);
-}
+pub fn sleep(seconds: f64) { clk::pit::sleep(seconds); }
 
 /// Powers off the machine.
-pub fn power_off() {
-    kernel::acpi::power_off();
+pub fn power_off() { kernel::acpi::power_off(); }
+
+pub fn reboot() {
+    unsafe {
+        asm!(
+        "xor rax, rax",
+        "mov cr3, rax",
+        );
+    }
 }
 
 /// Returns the instantaneous UNIX timestamp.
@@ -97,7 +91,7 @@ pub fn timestamp() -> u64 {
         DAYS_BEFORE_MONTH[(month as usize) - 1] + (leap_day as u64)
     };
 
-    let rtc = kernel::cmos::RTC::new();
+    let rtc = clk::cmos::RTC::new();
     let timestamp = SECONDS_IN_DAY * days_before_year(rtc.year as u64)
         + SECONDS_IN_DAY * days_before_month(rtc.year as u64, rtc.month as u64)
         + SECONDS_IN_DAY * ((rtc.day - 1) as u64)

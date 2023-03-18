@@ -20,11 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use core::any::type_name;
+use core::any;
 use core::panic::PanicInfo;
 
-use crate::{hlt_loop, serial_print, serial_println};
-use crate::aux::emulator::{exit_qemu, QEMUExitCode};
+use crate::{serial_print, serial_println};
+use crate::aux::emulator;
+use crate::aux::emulator::QEMUExitCode;
+use crate::hlt_loop;
 
 ///////////////////
 /// Serene Test
@@ -37,7 +39,7 @@ pub trait SereneTest {
 impl<T> SereneTest for T
     where T: Fn() {
     fn run(&self) {
-        serial_print!("{} ... ", type_name::<T>());
+        serial_print!("{} ... ", any::type_name::<T>());
         self();
         serial_println!("\x1B[32m[ success ]\x1B[0m");
     }
@@ -49,14 +51,14 @@ pub fn serene_test_runner(tests: &[&dyn SereneTest]) {
     for test in tests {
         test.run();
     }
-    exit_qemu(QEMUExitCode::Success);
+    emulator::exit_qemu(QEMUExitCode::Success);
 }
 
 /// A panic handler for serene tests.
 pub fn serene_test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("\x1B[31m[ failure ]\x1B[0m");
     serial_println!("{}", info);
-    exit_qemu(QEMUExitCode::Failure);
+    emulator::exit_qemu(QEMUExitCode::Failure);
     hlt_loop();
 }
 
@@ -71,7 +73,7 @@ pub trait PanickyTest {
 impl<T> PanickyTest for T
     where T: Fn() {
     fn run(&self) {
-        serial_print!("{} ... ", type_name::<T>());
+        serial_print!("{} ... ", any::type_name::<T>());
         self();
         serial_println!("\x1B[31m[ failure ]\x1B[0m");
     }
@@ -85,13 +87,13 @@ pub fn panicky_test_runner(tests: &[&dyn PanickyTest]) {
     }
     if let Some(test) = tests.first() {
         test.run();
-        exit_qemu(QEMUExitCode::Failure);
+        emulator::exit_qemu(QEMUExitCode::Failure);
     }
 }
 
 /// A panic handler for panicky tests.
 pub fn panicky_test_panic_handler(_info: &PanicInfo) -> ! {
     serial_println!("\x1B[32m[ success ]\x1B[0m");
-    exit_qemu(QEMUExitCode::Success);
+    emulator::exit_qemu(QEMUExitCode::Success);
     hlt_loop();
 }

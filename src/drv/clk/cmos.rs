@@ -55,9 +55,9 @@ impl RTC {
     pub fn sync(&mut self) { *self = RTC::new(); }
 }
 
-/////////////////////////////
-/// Register (CMOS - RAM)
-/////////////////////////////
+///////////////////////
+/// Register (CMOS)
+///////////////////////
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 enum Register {
@@ -73,7 +73,7 @@ enum Register {
 }
 
 /////////////////////////
-/// Interrupts (CMOS)
+/// Interrupt (CMOS)
 /////////////////////////
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -128,7 +128,7 @@ impl CMOS {
         }
     }
 
-    /// Returns a deciphered Real-Time Clock (RTC).
+    /// Returns a parsed Real-Time Clock (RTC).
     pub fn rtc(&mut self) -> RTC {
         const SRB_BCD_MODE: u8 = 0x04;
         const SRB_H12_MODE: u8 = 0x02;
@@ -136,7 +136,7 @@ impl CMOS {
         const HOUR_H12_FMT: u8 = 0x80;
 
         // OS Dev Wiki: https://wiki.osdev.org/CMOS#Format_of_Bytes
-        let bcd_to_binary = |bcd| -> u8 { ((bcd & 0xF0) >> 1) + ((bcd & 0xF0) >> 3) + (bcd & 0xf) };
+        let bcd_to_binary = |bcd| -> u8 { ((bcd & 0xF0) >> 1) + ((bcd & 0xF0) >> 3) + (bcd & 0x0F) };
         let h12_to_h24 = |h12| -> u8 { ((h12 & 0x7F) + 12) % 24 };
 
         let mut rtc;
@@ -146,9 +146,7 @@ impl CMOS {
             self.wait_while_updating();
             rtc = self.rtc_raw();
             self.wait_while_updating();
-            if rtc == self.rtc_raw() {
-                break;
-            }
+            if rtc == self.rtc_raw() { break; }
         }
 
         let status_reg_b = self.read_register(Register::B);
@@ -164,9 +162,7 @@ impl CMOS {
         }
 
         // Convert 12H to 24H.
-        if (status_reg_b & SRB_H12_MODE == 0) && (rtc.hour & HOUR_H12_FMT == 0) {
-            rtc.hour = h12_to_h24(rtc.hour);
-        }
+        if (status_reg_b & SRB_H12_MODE == 0) && (rtc.hour & HOUR_H12_FMT == 0) { rtc.hour = h12_to_h24(rtc.hour); }
 
         // Add century.
         rtc.year += RTC_CENTURY;

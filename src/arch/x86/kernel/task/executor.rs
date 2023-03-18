@@ -6,7 +6,7 @@ use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
 use x86_64::instructions;
 
-use crate::kernel::task::{Task, TaskID};
+use crate::arch::x86::kernel::task::{Task, TaskID};
 
 ////////////////
 // Attributes
@@ -37,9 +37,7 @@ impl Executor {
     /// Spawns the given task.
     pub fn spawn(&mut self, task: Task) {
         let task_id = task.id;
-        if let Some(_) = self.tasks.insert(task_id, task) {
-            panic!("a task with the same ID already exists");
-        }
+        if let Some(_) = self.tasks.insert(task_id, task) { panic!("a task with the same ID already exists"); }
         self.task_queue.push(task_id).expect("task queue is full");
     }
 
@@ -61,7 +59,7 @@ impl Executor {
                 None => continue,
             };
             let waker = waker_cache.entry(task_id).or_insert_with(
-                || WakerWrapper::new(task_id, task_queue.clone())
+                || { WakerWrapper::new(task_id, task_queue.clone()) }
             );
             let mut context = Context::from_waker(waker);
             match task.poll(&mut context) {
@@ -103,17 +101,11 @@ impl WakerWrapper {
     }
 
     /// Pushes the task back to the waiting queue when it's ready for execution.
-    fn wake_task(&self) {
-        self.task_queue.push(self.task_id).expect("task queue is full");
-    }
+    fn wake_task(&self) { self.task_queue.push(self.task_id).expect("task queue is full"); }
 }
 
 impl Wake for WakerWrapper {
-    fn wake(self: Arc<Self>) {
-        self.wake_task();
-    }
+    fn wake(self: Arc<Self>) { self.wake_task(); }
 
-    fn wake_by_ref(self: &Arc<Self>) {
-        self.wake_task();
-    }
+    fn wake_by_ref(self: &Arc<Self>) { self.wake_task(); }
 }

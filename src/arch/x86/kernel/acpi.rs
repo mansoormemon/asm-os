@@ -25,28 +25,30 @@ use core::ptr::NonNull;
 use core::slice;
 use core::sync::atomic::{AtomicU16, AtomicU32, AtomicU8, Ordering};
 
-use acpi::{AcpiHandler, AcpiTables, PhysicalMapping};
-use aml::{AmlContext, AmlName, AmlValue, DebugVerbosity, Handler};
+use acpi::{AcpiTables, PhysicalMapping};
+use acpi::AcpiHandler;
+use aml::{AmlContext, AmlName, AmlValue, DebugVerbosity};
+use aml::Handler;
 use x86_64::instructions::port::Port;
 use x86_64::PhysAddr;
 
-use crate::{failure, success};
-use crate::kernel::memory;
+use crate::{failure, success, warning};
+use crate::arch::x86::kernel::memory;
 
 /////////////////
 // ACPI Tables
 /////////////////
 
 /// Differentiated System Description Table.
-pub const DSDT: &'static str = "DSDT";
+pub const DSDT: &str = "DSDT";
 /// Fixed ACPI Description Table.
-pub const FADT: &'static str = "FACP";
+pub const FADT: &str = "FACP";
 /// Multiple APIC Description Table.
-pub const MADT: &'static str = "APIC";
+pub const MADT: &str = "APIC";
 /// Root System Description Pointer.
-pub const RSDP: &'static str = "RSD PTR";
+pub const RSDP: &str = "RSD PTR";
 /// Extended System Description Table.
-pub const XSDT: &'static str = "XSDT";
+pub const XSDT: &str = "XSDT";
 
 ////////////////////////////////////
 /// Fixed ACPI Description Table
@@ -131,83 +133,70 @@ enum BlockS5 {
 
 /// Initializes the ACPI and stores required parameters.
 pub(crate) fn init() {
-    let acpi = unsafe { AcpiTables::search_for_rsdp_bios(CustomACPIHandler) };
-    if acpi.is_err() {
+    if let Ok(acpi) = unsafe { AcpiTables::search_for_rsdp_bios(CustomACPIHandler) } {
+        for (sign, sdt) in acpi.sdts {
+            match sign.as_str() {
+                FADT => {
+                    SCI_INTERRUPT.store(
+                        read_fadt(sdt.physical_address, FADT::SCIInterrupt),
+                        Ordering::Relaxed,
+                    );
+                    SMI_COMMAND_PORT.store(
+                        read_fadt(sdt.physical_address, FADT::SMICommandPort),
+                        Ordering::Relaxed,
+                    );
+                    ACPI_ENABLE.store(
+                        read_fadt(sdt.physical_address, FADT::ACPIEnable),
+                        Ordering::Relaxed,
+                    );
+                    ACPI_DISABLE.store(
+                        read_fadt(sdt.physical_address, FADT::ACPIDisable),
+                        Ordering::Relaxed,
+                    );
+                    PM_1A_CONTROL_BLOCK.store(
+                        read_fadt(sdt.physical_address, FADT::PM1AControlBlock),
+                        Ordering::Relaxed,
+                    );
+                    PM_1B_CONTROL_BLOCK.store(
+                        read_fadt(sdt.physical_address, FADT::PM1BControlBlock),
+                        Ordering::Relaxed,
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        match &acpi.dsdt {
+            Some(dsdt) => {
+                let mut aml = AmlContext::new(Box::new(CustomAMLHandler), DebugVerbosity::None);
+
+                let address = memory::phys_to_virt_addr(PhysAddr::new(dsdt.address as u64));
+                let stream = unsafe { slice::from_raw_parts(address.as_ptr(), dsdt.length as usize) };
+
+                if aml.parse_table(stream).is_ok() {
+                    let name = AmlName::from_str(BLOCK_CODE_S5).unwrap();
+                    if let Ok(AmlValue::Package(s5)) = aml.namespace.get_by_path(&name) {
+                        if let AmlValue::Integer(value) = s5[BlockS5::SLPTYPA as usize] {
+                            SLP_TYPA.store(value as u16, Ordering::Relaxed);
+                        }
+                        if let AmlValue::Integer(value) = s5[BlockS5::SLPTYPB as usize] {
+                            SLP_TYPB.store(value as u16, Ordering::Relaxed);
+                        }
+                    } else {
+                        warning!("ACPI: D={:?}", CustomACPIError::S5ParseFailure);
+                    }
+                } else {
+                    warning!("ACPI: D={:?}", CustomACPIError::AMLParseFailure);
+                }
+            }
+            None => {
+                warning!("ACPI: D={:?}", CustomACPIError::InvalidDSDT);
+            }
+        }
+        success!("ACPI initialized");
+    } else {
         failure!("E={:?}", CustomACPIError::ACPINotFound);
-        return;
-    }
-    let acpi = acpi.unwrap();
-
-    let mut fadt_found = false;
-    for (sign, sdt) in acpi.sdts {
-        match sign.as_str() {
-            FADT => {
-                fadt_found = true;
-                SCI_INTERRUPT.store(
-                    read_fadt(sdt.physical_address, FADT::SCIInterrupt),
-                    Ordering::Relaxed,
-                );
-                SMI_COMMAND_PORT.store(
-                    read_fadt(sdt.physical_address, FADT::SMICommandPort),
-                    Ordering::Relaxed,
-                );
-                ACPI_ENABLE.store(
-                    read_fadt(sdt.physical_address, FADT::ACPIEnable),
-                    Ordering::Relaxed,
-                );
-                ACPI_DISABLE.store(
-                    read_fadt(sdt.physical_address, FADT::ACPIDisable),
-                    Ordering::Relaxed,
-                );
-                PM_1A_CONTROL_BLOCK.store(
-                    read_fadt(sdt.physical_address, FADT::PM1AControlBlock),
-                    Ordering::Relaxed,
-                );
-                PM_1B_CONTROL_BLOCK.store(
-                    read_fadt(sdt.physical_address, FADT::PM1BControlBlock),
-                    Ordering::Relaxed,
-                );
-            }
-            _ => {}
-        }
-    }
-    if !fadt_found {
-        failure!("E={:?}", CustomACPIError::FADTNotFound);
-        return;
-    }
-
-    match &acpi.dsdt {
-        Some(dsdt) => {
-            let mut aml = AmlContext::new(Box::new(CustomAMLHandler), DebugVerbosity::None);
-
-            let address = memory::phys_to_virt_addr(PhysAddr::new(dsdt.address as u64));
-            let stream = unsafe { slice::from_raw_parts(address.as_ptr(), dsdt.length as usize) };
-
-            if aml.parse_table(stream).is_err() {
-                failure!("ACPI: E={:?}", CustomACPIError::AMLParseFailure);
-                return;
-            }
-
-            let name = AmlName::from_str(BLOCK_CODE_S5).unwrap();
-            if let Ok(AmlValue::Package(s5)) = aml.namespace.get_by_path(&name) {
-                if let AmlValue::Integer(value) = s5[BlockS5::SLPTYPA as usize] {
-                    SLP_TYPA.store(value as u16, Ordering::Relaxed);
-                }
-                if let AmlValue::Integer(value) = s5[BlockS5::SLPTYPB as usize] {
-                    SLP_TYPB.store(value as u16, Ordering::Relaxed);
-                }
-            } else {
-                failure!("E={:?}", CustomACPIError::S5ParseFailure);
-                return;
-            }
-        }
-        None => {
-            failure!("E={:?}", CustomACPIError::InvalidDSDT);
-            return;
-        }
-    }
-
-    success!("ACPI initialized");
+    };
 }
 
 /// Converts the given physical address to virtual address and returns it.
@@ -336,6 +325,10 @@ pub enum CustomACPIError {
     FADTNotFound = 0x3,
     S5ParseFailure = 0x4,
 }
+
+/////////////////
+// Controllers
+/////////////////
 
 /// Powers off the machine.
 pub(crate) fn power_off() {

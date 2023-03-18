@@ -26,7 +26,8 @@ use bootloader::BootInfo;
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::{PhysAddr, VirtAddr};
 use x86_64::registers::control::Cr3;
-use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB, Translate};
+use x86_64::structures::paging::{FrameAllocator, Translate};
+use x86_64::structures::paging::{OffsetPageTable, PageTable, PhysFrame, Size4KiB};
 
 use crate::success;
 
@@ -60,6 +61,45 @@ pub const PAGE_SIZE: usize = 4096;
 /// Physical memory offset in the virtual space.
 static PHYS_MEM_OFFSET: AtomicU64 = AtomicU64::new(u64::MAX);
 
+/////////////////////////////////
+/// Boot Info Frame Allocator
+/////////////////////////////////
+pub struct BootInfoFrameAllocator {
+    memory_map: &'static MemoryMap,
+    next: usize,
+}
+
+impl BootInfoFrameAllocator {
+    /// Initializes the boot info frame allocator.
+    pub unsafe fn new(memory_map: &'static MemoryMap) -> Self {
+        BootInfoFrameAllocator {
+            memory_map,
+            next: 0,
+        }
+    }
+
+    /// Returns the physical memory's usable frames.
+    fn usable_frames(&self) -> impl Iterator<Item=PhysFrame> {
+        let regions = self.memory_map.iter();
+
+        // Filter usable regions.
+        let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
+        // Convert regions to ranges.
+        let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
+        // Compute frame addresses.
+        let frame_addresses = addr_ranges.flat_map(|r| r.step_by(PAGE_SIZE));
+        frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
+    }
+}
+
+unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
+    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
+        let frame = self.usable_frames().nth(self.next);
+        self.next += 1;
+        frame
+    }
+}
+
 ///////////////
 // Utilities
 ///////////////
@@ -71,9 +111,7 @@ pub(crate) fn init(boot_info: &'static BootInfo) {
 }
 
 /// Returns physical memory offset in virtual space.
-pub fn physical_memory_offset() -> u64 {
-    PHYS_MEM_OFFSET.load(Ordering::Relaxed)
-}
+pub fn physical_memory_offset() -> u64 { PHYS_MEM_OFFSET.load(Ordering::Relaxed) }
 
 /// Returns active L4 page table set up by the bootloader to enable paging.
 unsafe fn get_active_l4_table() -> &'static mut PageTable {
@@ -104,40 +142,4 @@ pub fn phys_to_virt_addr(addr: PhysAddr) -> VirtAddr {
 pub fn virt_to_phys_addr(addr: VirtAddr) -> Option<PhysAddr> {
     let mapper = unsafe { mapper() };
     mapper.translate_addr(addr)
-}
-
-/////////////////////////////////
-/// Boot Info Frame Allocator
-/////////////////////////////////
-pub struct BootInfoFrameAllocator {
-    memory_map: &'static MemoryMap,
-    next: usize,
-}
-
-impl BootInfoFrameAllocator {
-    /// Initializes the boot info frame allocator.
-    pub unsafe fn new(memory_map: &'static MemoryMap) -> Self {
-        BootInfoFrameAllocator {
-            memory_map,
-            next: 0,
-        }
-    }
-
-    /// Returns the physical memory's usable frames.
-    fn usable_frames(&self) -> impl Iterator<Item=PhysFrame> {
-        let regions = self.memory_map.iter();
-        // Filter usable regions.
-        let usable_regions = regions.filter(|r| r.region_type == MemoryRegionType::Usable);
-        let addr_ranges = usable_regions.map(|r| r.range.start_addr()..r.range.end_addr());
-        let frame_addresses = addr_ranges.flat_map(|r| r.step_by(PAGE_SIZE));
-        frame_addresses.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
-    }
-}
-
-unsafe impl FrameAllocator<Size4KiB> for BootInfoFrameAllocator {
-    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
-        let frame = self.usable_frames().nth(self.next);
-        self.next += 1;
-        frame
-    }
 }

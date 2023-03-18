@@ -22,10 +22,10 @@
 
 use core::fmt;
 
-use crate::kernel;
+use crate::drv::clk;
 
 ///////////////
-// Constants
+// Globals
 ///////////////
 
 pub const SECONDS_IN_MINUTE: u64 = 60;
@@ -169,7 +169,7 @@ pub struct Clock;
 impl Clock {
     /// Returns the current time.
     pub fn now() -> TimePoint {
-        let rtc = kernel::cmos::RTC::new();
+        let rtc = clk::cmos::RTC::new();
 
         TimePoint {
             year: rtc.year,

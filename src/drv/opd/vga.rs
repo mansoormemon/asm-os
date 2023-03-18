@@ -27,16 +27,18 @@ use core::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
-use vte::{Params, Parser, Perform};
+use vte::{Params, Parser};
+use vte::Perform;
 use x86_64::instructions;
 use x86_64::instructions::port::Port;
 
-use crate::api::char;
-use crate::api::vga::{clear, cursor, Default, palette};
+use crate::api::vga::{color, cursor};
+use crate::api::vga::clear;
 use crate::api::vga::color::Color;
+use crate::api::vga::Default;
 use crate::api::vga::font::Font;
 use crate::api::vga::palette::Palette;
-use crate::kernel::error::Error;
+use crate::cenc::ascii;
 
 // Video Graphics Array (VGA)
 //
@@ -135,34 +137,22 @@ struct ColorCode(u8);
 
 impl ColorCode {
     /// Creates a new color code from the given params.
-    fn new(fg: Color, bg: Color) -> ColorCode {
-        ColorCode((bg as u8) << 4 | (fg as u8))
-    }
+    fn new(fg: Color, bg: Color) -> ColorCode { ColorCode((bg as u8) << 4 | (fg as u8)) }
 
     /// Extracts the foreground color from the color code.
-    fn get_fg(&self) -> u8 {
-        self.0 & 0xF
-    }
+    fn get_foreground(&self) -> u8 { self.0 & 0xF }
 
     /// Overwrites the bits representing the foreground color in the color code.
-    fn set_fg(&mut self, fg: Color) {
-        self.0 = (self.0 & 0xF0) | (fg as u8)
-    }
+    fn set_foreground(&mut self, fg: Color) { self.0 = (self.0 & 0xF0) | (fg as u8) }
 
     /// Extracts the background color from the color code.
-    fn get_bg(&self) -> u8 {
-        self.0 >> 4
-    }
+    fn get_background(&self) -> u8 { self.0 >> 4 }
 
     /// Overwrites the bits representing the background color in the color code.
-    fn set_bg(&mut self, bg: Color) {
-        self.0 = ((bg as u8) << 4) | (self.0 & 0xF)
-    }
+    fn set_background(&mut self, bg: Color) { self.0 = ((bg as u8) << 4) | (self.0 & 0xF) }
 
     /// Returns the color code represented as a `u8`.
-    fn as_u8(&self) -> u8 {
-        self.0
-    }
+    fn as_u8(&self) -> u8 { self.0 }
 }
 
 ////////////////////////
@@ -211,9 +201,7 @@ impl Writer {
     pub(crate) fn cols(&self) -> usize { TEXT_BUFFER_COLS }
 
     /// Returns the cursor's position.
-    pub(crate) fn get_cursor_pos(&self) -> (usize, usize) {
-        (self.row_pos, self.col_pos)
-    }
+    pub(crate) fn get_cursor_pos(&self) -> (usize, usize) { (self.row_pos, self.col_pos) }
 
     /// Sets the cursor to the specified position.
     pub(crate) fn set_cursor_pos(&mut self, row: usize, col: usize) {
@@ -223,44 +211,28 @@ impl Writer {
     }
 
     /// Returns the current foreground color.
-    pub(crate) fn get_foreground(&self) -> Color {
-        Color::from_index(self.color_code.get_fg() as usize)
-    }
+    pub(crate) fn get_foreground(&self) -> Color { Color::from_index(self.color_code.get_foreground()).unwrap() }
 
     /// Sets the foreground color.
-    pub(crate) fn set_foreground(&mut self, fg: Color) {
-        self.color_code.set_fg(fg);
-    }
+    pub(crate) fn set_foreground(&mut self, fg: Color) { self.color_code.set_foreground(fg); }
 
     /// Resets the foreground color.
-    pub(crate) fn reset_foreground(&mut self) {
-        self.set_foreground(Default::FOREGROUND);
-    }
+    pub(crate) fn reset_foreground(&mut self) { self.set_foreground(Default::FOREGROUND); }
 
     /// Returns the current background color.
-    pub(crate) fn get_background(&self) -> Color {
-        Color::from_index(self.color_code.get_bg() as usize)
-    }
+    pub(crate) fn get_background(&self) -> Color { Color::from_index(self.color_code.get_background()).unwrap() }
 
     /// Sets the background color.
-    pub(crate) fn set_background(&mut self, bg: Color) {
-        self.color_code.set_bg(bg);
-    }
+    pub(crate) fn set_background(&mut self, bg: Color) { self.color_code.set_background(bg); }
 
     /// Resets the background color.
-    pub(crate) fn reset_background(&mut self) {
-        self.set_background(Default::BACKGROUND);
-    }
+    pub(crate) fn reset_background(&mut self) { self.set_background(Default::BACKGROUND); }
 
     /// Retrieve the color of the foreground and background.
-    pub(crate) fn get_color_code(&self) -> (Color, Color) {
-        (self.get_foreground(), self.get_background())
-    }
+    pub(crate) fn get_color_code(&self) -> (Color, Color) { (self.get_foreground(), self.get_background()) }
 
     /// Set the color of the foreground and background.
-    pub(crate) fn set_color_code(&mut self, fg: Color, bg: Color) {
-        self.color_code = ColorCode::new(fg, bg);
-    }
+    pub(crate) fn set_color_code(&mut self, fg: Color, bg: Color) { self.color_code = ColorCode::new(fg, bg); }
 
     /// Resets the color of the foreground and background.
     pub(crate) fn reset_color_code(&mut self) {
@@ -268,16 +240,20 @@ impl Writer {
     }
 
     /// Returns data at the specified position from the VGA buffer.
-    pub(crate) fn query_data_at(&self, row: usize, col: usize) -> Result<(u8, u8), Error> {
-        if row >= self.rows() || col >= self.cols() { return Err(Error::IndexOutOfBounds); }
-        let screen_char = self.buffer.chars[row][col].read();
-        Ok((screen_char.ascii_char, screen_char.color_code.as_u8()))
+    pub(crate) fn query_data_at(&self, row: usize, col: usize) -> Result<(u8, u8), ()> {
+        if row < self.rows() && col < self.cols() {
+            let screen_char = self.buffer.chars[row][col].read();
+            Ok((screen_char.ascii_char, screen_char.color_code.as_u8()))
+        } else {
+            Err(())
+        }
     }
 
     /// Updates the cursor position.
     fn update_cursor(&mut self) {
         let mut car = Port::new(Register::CRTControlAddr as u16);
         let mut cdr = Port::new(Register::CRTControlData as u16);
+
         let cur_offset = (self.row_pos * self.cols()) + self.col_pos;
         unsafe {
             car.write(0x0Fu16);
@@ -296,7 +272,7 @@ impl Writer {
 
         let vga_color = |color: u8| -> u8 { color >> CONTRAST };
         for (i, (r, g, b)) in palette.colors.iter().enumerate() {
-            let reg = Color::from_index(i).to_vga_register();
+            let reg = Color::from_index(i as u8).unwrap().associated_vga_register();
             unsafe {
                 addr.write(reg);
                 data.write(vga_color(*r));
@@ -344,32 +320,31 @@ impl Writer {
     /// Writes the given byte to the VGA buffer.
     fn write_byte(&mut self, byte: u8) {
         match byte {
-            char::NEWLINE => {
-                self.newline();
+            ascii::LF => {
+                self.linefeed();
             }
-            char::BACKSPACE => {
+            ascii::BS => {
                 self.backspace();
             }
-            char::HTAB => {
-                self.htab();
+            ascii::HT => {
+                self.h_tab();
             }
-            char::CARRIAGE_RETURN => {
+            ascii::CR => {
                 self.carriage_return();
             }
-            char::FORM_FEED => {
+            ascii::FF => {
                 self.form_feed();
             }
             byte => {
-                if self.col_pos >= self.cols() {
-                    self.newline();
-                }
+                if self.col_pos >= self.cols() { self.linefeed(); }
                 let row = self.row_pos;
                 let col = self.col_pos;
                 let color_code = self.color_code;
-                self.buffer.chars[row][col].write(ScreenChar {
+                let data = ScreenChar {
                     ascii_char: byte,
                     color_code,
-                });
+                };
+                self.buffer.chars[row][col].write(data);
                 self.col_pos += 1;
             }
         }
@@ -387,7 +362,7 @@ impl Writer {
     }
 
     /// Outputs a new line.
-    fn newline(&mut self) {
+    fn linefeed(&mut self) {
         if self.row_pos < (self.rows() - 1) {
             self.row_pos += 1;
         } else {
@@ -400,7 +375,7 @@ impl Writer {
     fn backspace(&mut self) {
         if self.col_pos > 0 {
             let blank = ScreenChar {
-                ascii_char: char::SPACE,
+                ascii_char: ascii::SP,
                 color_code: self.color_code,
             };
             self.col_pos -= 1;
@@ -409,28 +384,25 @@ impl Writer {
     }
 
     /// Outputs a tab.
-    fn htab(&mut self) {
-        let tab_width = TAB_WIDTH.load(Ordering::Relaxed);
-        for _ in 0..tab_width as usize {
-            self.write_byte(char::SPACE);
+    fn h_tab(&mut self) {
+        for _ in 0..get_tab_width() as usize {
+            self.write_byte(ascii::SP);
         }
     }
 
     /// Outputs a carriage return.
-    fn carriage_return(&mut self) {
-        self.col_pos = 0;
-    }
+    fn carriage_return(&mut self) { self.col_pos = 0; }
 
     /// Outputs a form feed.
     fn form_feed(&mut self) {
-        self.newline();
-        self.write_byte(char::SPACE);
+        self.linefeed();
+        self.write_byte(ascii::SP);
     }
 
     /// Clears the right of the given row.
     fn clear_row_right(&mut self, row: usize, begin: usize) {
         let blank = ScreenChar {
-            ascii_char: char::SPACE,
+            ascii_char: ascii::SP,
             color_code: self.color_code,
         };
         for col in begin..self.cols() {
@@ -441,7 +413,7 @@ impl Writer {
     /// Clears the left of the given row.
     fn clear_row_left(&mut self, row: usize, end: usize) {
         let blank = ScreenChar {
-            ascii_char: char::SPACE,
+            ascii_char: ascii::SP,
             color_code: self.color_code,
         };
         for col in 0..end {
@@ -450,9 +422,7 @@ impl Writer {
     }
 
     /// Clears the given row.
-    fn clear_row(&mut self, row: usize) {
-        self.clear_row_right(row, 0);
-    }
+    fn clear_row(&mut self, row: usize) { self.clear_row_right(row, 0); }
 
     /// Clears the screen without updating cursor position.
     fn idle_clear(&mut self) {
@@ -506,10 +476,10 @@ impl Perform for Writer {
                             bg = Default::BACKGROUND;
                         }
                         FG_D_BEGIN..=FG_D_END | FG_B_BEGIN..=FG_B_END => {
-                            fg = Color::from_ansi(param[0] as u8);
+                            fg = Color::from_ansi(param[0] as u8).unwrap();
                         }
                         BG_D_BEGIN..=BG_D_END | BG_B_BEGIN..=BG_B_END => {
-                            bg = Color::from_ansi((param[0] as u8) - FG_BG_DIFF);
+                            bg = Color::from_ansi((param[0] as u8) - FG_BG_DIFF).unwrap();
                         }
                         _ => {}
                     }
@@ -656,7 +626,7 @@ fn set_attr_ctrl_reg(index: u8, value: u8) {
 }
 
 /// Returns whether the cursor is enabled or not.
-pub(crate) fn is_cursor_enabled() -> bool { CURSOR_ENABLED.load(Ordering::Relaxed) }
+pub(crate) fn is_cursor_enabled() -> bool { CURSOR_ENABLED.load(Ordering::SeqCst) }
 
 /// Enables the cursor.
 pub(crate) fn enable_cursor() {
@@ -666,9 +636,10 @@ pub(crate) fn enable_cursor() {
     let mut addr: Port<u8> = Port::new(Register::CRTControlAddr as u16);
     let mut data: Port<u8> = Port::new(Register::CRTControlData as u16);
 
-    let (scanline_begin, scanline_end) = cursor::Style::from_index(
-        CURSOR_STYLE.load(Ordering::Relaxed) as usize
-    ).scanline_bounds();
+    let (scanline_begin, scanline_end) =
+        cursor::Style::from_index(CURSOR_STYLE.load(Ordering::SeqCst))
+            .unwrap()
+            .scanline_bounds();
     unsafe {
         addr.write(REG_CURSOR_START);
         let byte = data.read();
@@ -678,7 +649,8 @@ pub(crate) fn enable_cursor() {
         let byte = data.read();
         data.write((byte & 0xE0) | scanline_end);
     }
-    CURSOR_ENABLED.store(true, Ordering::Relaxed)
+
+    CURSOR_ENABLED.store(true, Ordering::SeqCst)
 }
 
 /// Disables the cursor.
@@ -690,33 +662,34 @@ pub(crate) fn disable_cursor() {
         addr.write(0x0Au8);
         data.write(0x20u8);
     }
-    CURSOR_ENABLED.store(false, Ordering::Relaxed)
+
+    CURSOR_ENABLED.store(false, Ordering::SeqCst)
 }
 
 /// Returns the current tab width.
-pub(crate) fn get_tab_width() -> u8 { TAB_WIDTH.load(Ordering::Relaxed) }
+pub(crate) fn get_tab_width() -> u8 { TAB_WIDTH.load(Ordering::SeqCst) }
 
 /// Sets tab width.
 pub(crate) fn set_tab_width(tab_width: u8) {
-    if tab_width > 0 { TAB_WIDTH.store(tab_width, Ordering::Relaxed); }
+    if tab_width > 0 { TAB_WIDTH.store(tab_width, Ordering::SeqCst); }
 }
 
 /// Resets the tab width.
-pub(crate) fn reset_tab_width() { TAB_WIDTH.store(Default::TAB_WIDTH, Ordering::Relaxed); }
+pub(crate) fn reset_tab_width() { TAB_WIDTH.store(Default::TAB_WIDTH, Ordering::SeqCst); }
 
 /// Returns the current cursor style.
 pub(crate) fn get_cursor_style() -> cursor::Style {
-    cursor::Style::from_index(CURSOR_STYLE.load(Ordering::Relaxed) as usize)
+    cursor::Style::from_index(CURSOR_STYLE.load(Ordering::SeqCst)).unwrap()
 }
 
 /// Sets the cursor style.
 pub(crate) fn set_cursor_style(cursor_style: cursor::Style) {
-    CURSOR_STYLE.store(cursor_style as u8, Ordering::Relaxed);
+    CURSOR_STYLE.store(cursor_style.as_u8(), Ordering::SeqCst);
     if is_cursor_enabled() { enable_cursor(); }
 }
 
 /// Resets the cursor style.
-pub(crate) fn reset_cursor_style() { CURSOR_STYLE.store(Default::CURSOR_STYLE as u8, Ordering::Relaxed); }
+pub(crate) fn reset_cursor_style() { CURSOR_STYLE.store(Default::CURSOR_STYLE.as_u8(), Ordering::SeqCst); }
 
 /// Sets the underline location.
 pub(crate) fn set_underline_location(location: u8) {
@@ -742,8 +715,8 @@ pub(crate) fn set_underline_location(location: u8) {
 /// Initializes the VGA.
 pub(crate) fn init() {
     // Map VGA color palette registers.
-    for color in palette::COLORS.iter() {
-        set_attr_ctrl_reg(*color as u8, color.to_vga_register());
+    for color in color::COLORS.iter() {
+        set_attr_ctrl_reg(*color as u8, color.associated_vga_register());
     }
 
     // Clear blinking bit.
@@ -780,7 +753,7 @@ pub fn _print(args: fmt::Arguments) {
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::kernel::vga::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::drv::opd::vga::_print(format_args!($($arg)*)));
 }
 
 #[macro_export]

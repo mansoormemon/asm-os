@@ -21,9 +21,11 @@
 // SOFTWARE.
 
 use core::{mem, ptr};
-use core::alloc::{GlobalAlloc, Layout};
+use core::alloc::GlobalAlloc;
+use core::alloc::Layout;
 
-use crate::kernel::allocator::{align_up, Locked};
+use crate::arch::x86::kernel::allocator;
+use crate::arch::x86::kernel::allocator::Locked;
 
 /////////////////
 /// List Node
@@ -34,9 +36,9 @@ struct ListNode {
 }
 
 impl ListNode {
-    /// Creates a new object.
+    /// Creates a new empty object.
     const fn new(size: usize) -> Self {
-        ListNode {
+        Self {
             size,
             next: None,
         }
@@ -57,7 +59,7 @@ pub struct LinkedListAllocator {
 }
 
 impl LinkedListAllocator {
-    /// Creates a new object.
+    /// Creates a new empty object.
     pub const fn new() -> Self {
         Self {
             head: ListNode::new(0),
@@ -71,7 +73,7 @@ impl LinkedListAllocator {
 
     /// Adds a free region to the list.
     unsafe fn add_free_region(&mut self, addr: usize, size: usize) {
-        assert_eq!(align_up(addr, mem::align_of::<ListNode>()), addr);
+        assert_eq!(allocator::align_up(addr, mem::align_of::<ListNode>()), addr);
         assert!(size >= mem::size_of::<ListNode>());
 
         let mut node = ListNode::new(size);
@@ -84,6 +86,7 @@ impl LinkedListAllocator {
     /// Finds a suitable region from the list.
     fn find_region(&mut self, size: usize, align: usize) -> Option<(&'static mut ListNode, usize)> {
         let mut current = &mut self.head;
+
         while let Some(ref mut region) = current.next {
             if let Ok(alloc_start) = Self::alloc_from_region(&region, size, align) {
                 let next = region.next.take();
@@ -99,17 +102,13 @@ impl LinkedListAllocator {
 
     /// Allocates memory from the specified region.
     fn alloc_from_region(region: &ListNode, size: usize, align: usize) -> Result<usize, ()> {
-        let alloc_start = align_up(region.start_addr(), align);
+        let alloc_start = allocator::align_up(region.start_addr(), align);
         let alloc_end = alloc_start.checked_add(size).ok_or(())?;
 
-        if alloc_end > region.end_addr() {
-            return Err(());
-        }
+        if alloc_end > region.end_addr() { return Err(()); }
 
         let excess_size = region.end_addr() - alloc_end;
-        if excess_size > 0 && excess_size < mem::size_of::<ListNode>() {
-            return Err(());
-        }
+        if excess_size > 0 && excess_size < mem::size_of::<ListNode>() { return Err(()); }
 
         Ok(alloc_start)
     }
@@ -118,6 +117,7 @@ impl LinkedListAllocator {
     fn size_align(layout: Layout) -> (usize, usize) {
         let layout = layout.align_to(mem::align_of::<ListNode>()).expect("adjusting alignment failed").pad_to_align();
         let size = layout.size().max(mem::size_of::<ListNode>());
+
         (size, layout.align())
     }
 }

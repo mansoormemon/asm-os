@@ -20,11 +20,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-/////////////////////
-/// Generic Error 
-/////////////////////
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-pub enum Error {
-    IndexOutOfBounds = 0x0,
-}
+pub mod acpi;
+pub mod allocator;
+pub mod gdt;
+pub mod idt;
+pub mod memory;
+pub mod pics;
+pub mod task;

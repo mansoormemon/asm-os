@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-pub mod char;
 pub mod chrono;
+pub mod kbd;
 pub mod system;
 pub mod vga;

@@ -26,8 +26,9 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use x86_64::instructions;
 use x86_64::instructions::port::Port;
 
-use crate::kernel::cmos::CMOS;
-use crate::kernel::interrupts::{self, InterruptIndex};
+use crate::arch::x86::kernel::idt;
+use crate::arch::x86::kernel::idt::IRQ;
+use crate::drv::clk::cmos::CMOS;
 use crate::success;
 
 // Programmable Interval Timer (PIT | Intel 8253/8254)
@@ -78,9 +79,9 @@ const INTERVAL: f64 = (DIVIDER as f64) / FREQUENCY;
 /// OS Dev Wiki: https://wiki.osdev.org/Programmable_Interval_Timer#Outputs
 const OUTPUT_CHANNEL: u8 = 0;
 
-//////////////
-// Trackers
-//////////////
+////////////
+// States
+////////////
 
 /// Flag to check whether PIT is initialized or not.
 static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
@@ -92,7 +93,7 @@ static TICKS: AtomicUsize = AtomicUsize::new(0);
 static LAST_RTC_UPDATE: AtomicUsize = AtomicUsize::new(0);
 
 //////////////
-// Utilites
+// Utilities
 //////////////
 
 /// Initializes the PIT and sets the relevant interrupt handlers.
@@ -106,16 +107,15 @@ pub(crate) fn init() {
     set_pit_frequency_divider(divider as u16, OUTPUT_CHANNEL);
 
     // Set interrupt handler for timer.
-    interrupts::set_interrupt_handler(InterruptIndex::Timer, timer_interrupt_handler);
+    idt::set_irq_handler(IRQ::Timer, timer_irq_handler);
 
     // Set interrupt handler for RTC.
-    interrupts::set_interrupt_handler(InterruptIndex::RTC, rtc_interrupt_handler);
+    idt::set_irq_handler(IRQ::RTC, rtc_irq_handler);
     // Enable RTC update interrupts.
     CMOS::new().enable_update_interrupt();
 
     // Update flag.
     IS_INITIALIZED.store(true, Ordering::Relaxed);
-
     success!("PIT initialized");
 }
 
@@ -126,9 +126,7 @@ pub(crate) fn is_initialized() -> bool { IS_INITIALIZED.load(Ordering::Relaxed) 
 pub(crate) fn tick_interval() -> f64 { INTERVAL }
 
 /// Returns the ticks elapsed since PIT was initialized.
-pub(crate) fn ticks() -> usize {
-    TICKS.load(Ordering::Relaxed)
-}
+pub(crate) fn ticks() -> usize { TICKS.load(Ordering::Relaxed) }
 
 /// Returns the latest RTC clock update tick.
 pub(crate) fn last_rtc_update() -> usize { LAST_RTC_UPDATE.load(Ordering::Relaxed) }
@@ -152,9 +150,7 @@ pub(crate) fn uptime() -> f64 { (ticks() as f64) * tick_interval() }
 pub(crate) fn halt() {
     let disabled = !instructions::interrupts::are_enabled();
     instructions::interrupts::enable_and_hlt();
-    if disabled {
-        instructions::interrupts::disable();
-    }
+    if disabled { instructions::interrupts::disable(); }
 }
 
 /// Halts the CPU for the specified duration.
@@ -198,12 +194,10 @@ pub(crate) fn set_pit_frequency_divider(divider: u16, channel: u8) {
 //////////////
 
 /// Interrupt handler for timer.
-fn timer_interrupt_handler() {
-    TICKS.fetch_add(1, Ordering::Relaxed);
-}
+fn timer_irq_handler() { TICKS.fetch_add(1, Ordering::Relaxed); }
 
 /// Interrupt handler for RTC.
-fn rtc_interrupt_handler() {
+fn rtc_irq_handler() {
     LAST_RTC_UPDATE.store(ticks(), Ordering::Relaxed);
     CMOS::new().notify_end_of_interrupt();
 }

@@ -21,10 +21,11 @@
 // SOFTWARE.
 
 use core::{mem, ptr};
-use core::alloc::{GlobalAlloc, Layout};
+use core::alloc::GlobalAlloc;
+use core::alloc::Layout;
 use core::ptr::NonNull;
 
-use crate::kernel::allocator::Locked;
+use crate::arch::x86::kernel::allocator::Locked;
 
 ////////////////
 // Attributes
@@ -49,11 +50,11 @@ pub struct PoolAllocator {
 }
 
 impl PoolAllocator {
-    /// Creates a new object.
+    /// Creates a new empty object.
     pub const fn new() -> Self {
         const EMPTY: Option<&'static mut ListNode> = None;
 
-        PoolAllocator {
+        Self {
             buckets: [EMPTY; BLOCK_SIZES.len()],
             fallback_allocator: linked_list_allocator::Heap::empty(),
         }

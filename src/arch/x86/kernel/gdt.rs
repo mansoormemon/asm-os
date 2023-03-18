@@ -22,13 +22,21 @@
 
 use lazy_static::lazy_static;
 use x86_64::addr::VirtAddr;
-use x86_64::instructions::segmentation::{CS, Segment};
-use x86_64::instructions::tables::load_tss;
+use x86_64::instructions;
+use x86_64::instructions::segmentation::CS;
+use x86_64::instructions::segmentation::Segment;
 use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 
-use crate::kernel::memory;
+use crate::arch::x86::kernel::memory;
 use crate::success;
+
+////////////////
+// Attributes
+////////////////
+
+// A stack size of 8 pages (32 KiB).
+pub const STACK_SIZE: usize = 8 * memory::PAGE_SIZE;
 
 /////////////
 /// Stack
@@ -51,7 +59,7 @@ lazy_static! {
     /// context switching is no longer supported in 64-bit mode and the format of the TSS has changed
     /// completely.
     ///
-    /// On x86_64, the TSS no longer holds any task-specific information at all. Instead, it holds two
+    /// On x86, the TSS no longer holds any task-specific information at all. Instead, it holds two
     /// stack tables and an I/O port permissions bitmap:
     ///
     /// 1. Privilege Stack Table (PST)
@@ -67,8 +75,6 @@ lazy_static! {
         // which will reboot the machine. A triple fault exception is triggered if the stack is full
         // and the guard page is hit.
         tss.interrupt_stack_table[Stack::DoubleFault as usize] = {
-            // Create a stack of 8 pages (32 KiB).
-            const STACK_SIZE: usize = 8 * memory::PAGE_SIZE;
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
             let stack_begin = VirtAddr::from_ptr(unsafe {&STACK});
             let stack_end = stack_begin + STACK_SIZE;
@@ -117,7 +123,7 @@ pub(crate) fn init() {
     GDT.0.load();
     unsafe {
         CS::set_reg(GDT.1.code_selector);
-        load_tss(GDT.1.tss_selector);
+        instructions::tables::load_tss(GDT.1.tss_selector);
     }
     success!("GDT initialized");
 }

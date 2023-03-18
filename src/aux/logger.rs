@@ -108,7 +108,7 @@ pub fn _log(log_level: LogLevel, fmt: fmt::Arguments) {
     if system::is_timer_initialized() {
         print!("\x1B[93m[{:01$.02$}] ", system::uptime(), UPTIME_LENGTH, PRECISION);
     } else {
-        print!("\x1B[93m[--------.----] ");
+        print!("\x1B[91m[--------.----] ");
     }
 
     print!("\x1B[0m{} ", fmt);

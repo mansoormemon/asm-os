@@ -20,10 +20,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use core::alloc::{GlobalAlloc, Layout};
+use core::alloc::GlobalAlloc;
+use core::alloc::Layout;
 use core::ptr;
 
-use crate::kernel::allocator::{align_up, Locked};
+use crate::arch::x86::kernel::allocator;
+use crate::arch::x86::kernel::allocator::Locked;
 
 //////////////////////
 /// Bump Allocator
@@ -36,9 +38,9 @@ pub struct BumpAllocator {
 }
 
 impl BumpAllocator {
-    /// Creates a new object.
+    /// Creates a new empty object.
     pub const fn new() -> Self {
-        BumpAllocator {
+        Self {
             heap_start: 0,
             heap_end: 0,
             next: 0,
@@ -58,7 +60,7 @@ unsafe impl GlobalAlloc for Locked<BumpAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut bump = self.lock();
 
-        let alloc_start = align_up(bump.next, layout.align());
+        let alloc_start = allocator::align_up(bump.next, layout.align());
         let alloc_end = match alloc_start.checked_add(layout.size()) {
             Some(end) => end,
             None => return ptr::null_mut(),
@@ -77,8 +79,6 @@ unsafe impl GlobalAlloc for Locked<BumpAllocator> {
         let mut bump = self.lock();
 
         bump.allocations -= 1;
-        if bump.allocations == 0 {
-            bump.next = bump.heap_start;
-        }
+        if bump.allocations == 0 { bump.next = bump.heap_start; }
     }
 }
