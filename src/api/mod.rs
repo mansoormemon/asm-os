@@ -22,5 +22,6 @@
 
 pub mod chrono;
 pub mod kbd;
+pub mod io;
 pub mod system;
 pub mod vga;

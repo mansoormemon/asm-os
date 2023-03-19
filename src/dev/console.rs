@@ -30,7 +30,9 @@ use crate::api::system;
 use crate::cenc::ascii;
 use crate::print;
 
-pub static STDIN: Mutex<String> = Mutex::new(String::new());
+//
+
+static BUFFER: Mutex<String> = Mutex::new(String::new());
 
 /// Echo enabled.
 static ECHO_ENABLED: AtomicBool = AtomicBool::new(true);
@@ -55,7 +57,7 @@ pub fn key_handle(key: char) {
     const BS: char = ascii::BS as char;
     const ESC: char = ascii::ESC as char;
 
-    let mut stdin = STDIN.lock();
+    let mut stdin = BUFFER.lock();
 
     if key == BS && !is_raw_enabled() {
         if let Some(c) = stdin.pop() {
@@ -87,7 +89,7 @@ pub fn read_char() -> char {
     loop {
         system::halt();
         let res = instructions::interrupts::without_interrupts(|| {
-            let mut stdin = STDIN.lock();
+            let mut stdin = BUFFER.lock();
             if !stdin.is_empty() {
                 Some(stdin.remove(0))
             } else {
@@ -106,7 +108,7 @@ pub fn read_line() -> String {
     loop {
         system::halt();
         let res = instructions::interrupts::without_interrupts(|| {
-            let mut stdin = STDIN.lock();
+            let mut stdin = BUFFER.lock();
             match stdin.chars().next_back() {
                 Some('\n') => {
                     let line = stdin.clone();

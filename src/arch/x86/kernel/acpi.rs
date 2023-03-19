@@ -330,8 +330,8 @@ pub enum CustomACPIError {
 // Controllers
 /////////////////
 
-/// Powers off the machine.
-pub(crate) fn power_off() {
+/// Shuts down the machine.
+pub(crate) fn shutdown() {
     let pm_1a_cnt_blk = PM_1A_CONTROL_BLOCK.load(Ordering::Relaxed);
     let slp_typa = SLP_TYPA.load(Ordering::Relaxed);
 

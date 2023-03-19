@@ -57,8 +57,8 @@ pub fn halt() { clk::pit::halt(); }
 /// Halts the CPU for the specified duration.
 pub fn sleep(seconds: f64) { clk::pit::sleep(seconds); }
 
-/// Powers off the machine.
-pub fn power_off() { kernel::acpi::power_off(); }
+/// Shuts down the machine.
+pub fn shutdown() { kernel::acpi::shutdown(); }
 
 pub fn reboot() {
     unsafe {

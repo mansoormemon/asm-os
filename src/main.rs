@@ -28,18 +28,15 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
 use core::panic::PanicInfo;
 
 use bootloader::{BootInfo, entry_point};
 
-use asm_os::{api, print, println};
-use asm_os::api::kbd::Layout;
-use asm_os::api::vga;
+use asm_os::{print, println};
+use asm_os::api::{io, vga};
 use asm_os::arch::x86::kernel::task::{Executor, Task};
 #[cfg(test)]
 use asm_os::aux::testing::serene_test_panic_handler;
-use asm_os::dev::console;
 #[cfg(not(test))]
 use asm_os::hlt_loop;
 use asm_os::init;
@@ -49,44 +46,9 @@ entry_point!(kernel_main);
 pub async fn main() {
     loop {
         print!("\x1B[32m>\x1B[33m>\x1B[31m>\x1b[0m ");
-        let response = console::read_line();
+        let response = io::stdin().read_line();
         let response = response.trim();
-        if response == "clear" {
-            vga::clear();
-        } else if response.starts_with("kbd") {
-            let tokens: Vec<&str> = response.split(" ").collect();
-            if tokens[1] == "set" {
-                if tokens[2] == "layout" {
-                    let lyt = tokens[3];
-
-                    match lyt {
-                        "azerty" => api::kbd::set_layout(Layout::AZERTY),
-                        "dvorak" => api::kbd::set_layout(Layout::Dvorak),
-                        "qwerty" => api::kbd::set_layout(Layout::QWERTY),
-                        _ => println!("\x1B[31mError:\x1B[0m Unknown layout"),
-                    }
-                } else {
-                    println!("\x1B[31mError:\x1B[0m Unknown property")
-                }
-            } else if tokens[1] == "get" {
-                if tokens[2] == "layout" {
-                    println!("{}", api::kbd::get_layout().as_str());
-                } else {
-                    println!("\x1B[31mError:\x1B[0m Unknown property")
-                }
-            } else if tokens[1] == "reset" {
-                if tokens[2] == "layout" {
-                    api::kbd::reset_layout();
-                } else {
-                    println!("\x1B[31mError:\x1B[0m Unknown property")
-                }
-            } else {
-                println!("\x1B[31mError:\x1B[0m Unknown operation")
-            }
-            println!("{}", tokens[2]);
-        } else if response == "shutdown" {
-            api::system::power_off();
-        }
+        println!("You entered: {}", response);
     }
 }
 
@@ -102,7 +64,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     test_main();
 
     let mut executor = Executor::new();
-    // executor.spawn(Task::new(main()));
+    executor.spawn(Task::new(main()));
     executor.run();
 }
 
