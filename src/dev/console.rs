@@ -30,7 +30,7 @@ use crate::api::system;
 use crate::cenc::ascii;
 use crate::print;
 
-//
+// todo: complete later; we need filesystem first.
 
 static BUFFER: Mutex<String> = Mutex::new(String::new());
 
@@ -88,14 +88,16 @@ pub fn read_char() -> char {
     enable_raw();
     loop {
         system::halt();
-        let res = instructions::interrupts::without_interrupts(|| {
-            let mut stdin = BUFFER.lock();
-            if !stdin.is_empty() {
-                Some(stdin.remove(0))
-            } else {
-                None
+        let res = instructions::interrupts::without_interrupts(
+            || {
+                let mut buffer = BUFFER.lock();
+                if !buffer.is_empty() {
+                    Some(buffer.remove(0))
+                } else {
+                    None
+                }
             }
-        });
+        );
         if let Some(c) = res {
             enable_echo();
             disable_raw();
@@ -105,21 +107,27 @@ pub fn read_char() -> char {
 }
 
 pub fn read_line() -> String {
+    const FF: char = ascii::FF as char;
+    const LF: char = ascii::LF as char;
+    const CR: char = ascii::CR as char;
+
     loop {
         system::halt();
-        let res = instructions::interrupts::without_interrupts(|| {
-            let mut stdin = BUFFER.lock();
-            match stdin.chars().next_back() {
-                Some('\n') => {
-                    let line = stdin.clone();
-                    stdin.clear();
-                    Some(line)
-                }
-                _ => {
-                    None
+        let res = instructions::interrupts::without_interrupts(
+            || {
+                let mut stdin = BUFFER.lock();
+                match stdin.chars().next_back() {
+                    Some(CR) | Some(LF) | Some(FF) => {
+                        let line = stdin.clone();
+                        stdin.clear();
+                        Some(line)
+                    }
+                    _ => {
+                        None
+                    }
                 }
             }
-        });
+        );
         if let Some(line) = res {
             return line;
         }

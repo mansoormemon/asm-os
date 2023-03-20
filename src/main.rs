@@ -32,28 +32,19 @@ use core::panic::PanicInfo;
 
 use bootloader::{BootInfo, entry_point};
 
-use asm_os::{print, println};
-use asm_os::api::{io, vga};
+use asm_os::println;
+#[cfg(not(test))]
+use asm_os::{hlt_loop, init};
+use asm_os::api::vga;
 use asm_os::arch::x86::kernel::task::{Executor, Task};
 #[cfg(test)]
 use asm_os::aux::testing::serene_test_panic_handler;
-#[cfg(not(test))]
-use asm_os::hlt_loop;
-use asm_os::init;
+use asm_os::usr;
 
 entry_point!(kernel_main);
 
-pub async fn main() {
-    loop {
-        print!("\x1B[32m>\x1B[33m>\x1B[31m>\x1b[0m ");
-        let response = io::stdin().read_line();
-        let response = response.trim();
-        println!("You entered: {}", response);
-    }
-}
-
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    vga::set_palette(vga::palette::MATERIAL_DARKER);
+    vga::set_palette(vga::palette::MATERIAL_DARKER_HC);
     init(boot_info, false);
 
     println!();
@@ -64,7 +55,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     test_main();
 
     let mut executor = Executor::new();
-    executor.spawn(Task::new(main()));
+    executor.spawn(Task::new(usr::shell::main()));
     executor.run();
 }
 

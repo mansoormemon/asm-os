@@ -53,6 +53,7 @@ pub mod aux;
 pub mod cenc;
 pub mod dev;
 pub mod drv;
+pub mod usr;
 
 #[cfg(test)]
 entry_point!(test_kernel_main);
