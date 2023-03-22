@@ -32,8 +32,8 @@ use crate::api::kbd::Layout;
 use crate::cenc::ascii;
 use crate::dev::console;
 use crate::success;
-use crate::x86::kernel::idt;
-use crate::x86::kernel::idt::IRQ;
+use crate::krnl::idt;
+use crate::krnl::idt::IRQ;
 
 /////////////
 // Mutexes
@@ -159,9 +159,6 @@ fn send_csi(code: &'static str) {
 
 /// An irq handler for keyboard.
 fn keyboard_irq_handler() {
-    const H_TAB_KEY: char = ascii::HT as char;
-    const DEL_KEY: char = ascii::DEL as char;
-
     let mut mutex_guarded_kbd = KEYBOARD.lock();
     let keyboard = mutex_guarded_kbd.as_mut().unwrap();
 
@@ -191,8 +188,8 @@ fn keyboard_irq_handler() {
                 DecodedKey::RawKey(KeyCode::ArrowDown) => send_csi("B"),
                 DecodedKey::RawKey(KeyCode::ArrowRight) => send_csi("C"),
                 DecodedKey::RawKey(KeyCode::ArrowLeft) => send_csi("D"),
-                DecodedKey::Unicode(H_TAB_KEY) if is_shift => send_csi("Z"),
-                DecodedKey::Unicode(DEL_KEY) if is_alt && is_ctrl => api::system::reboot(),
+                DecodedKey::Unicode(ascii::ch::HT) if is_shift => send_csi("Z"),
+                DecodedKey::Unicode(ascii::ch::DEL) if is_alt && is_ctrl => api::system::reboot(),
                 DecodedKey::Unicode(key) => send_key(key),
                 _ => {}
             }

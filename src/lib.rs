@@ -41,18 +41,17 @@ use bootloader::BootInfo;
 use bootloader::entry_point;
 use x86_64::instructions;
 
-use crate::arch::x86;
 use crate::aux::logger;
 use crate::aux::logger::LogLevel;
 #[cfg(test)]
 use crate::aux::testing::serene_test_panic_handler;
 
 pub mod api;
-pub mod arch;
 pub mod aux;
 pub mod cenc;
 pub mod dev;
 pub mod drv;
+pub mod krnl;
 pub mod usr;
 
 #[cfg(test)]
@@ -71,22 +70,22 @@ fn panic(info: &PanicInfo) -> ! { serene_test_panic_handler(info); }
 
 /// Initializes all sub-modules.
 pub fn init(boot_info: &'static BootInfo, silent_boot: bool) {
-    drv::opd::vga::init();
+    drv::output::vga::init();
 
     logger::init(if silent_boot { LogLevel::Quiet } else { LogLevel::Apprise });
 
-    x86::kernel::gdt::init();
-    x86::kernel::idt::init();
-    x86::kernel::pics::init();
-    x86::kernel::pics::enable();
+    krnl::gdt::init();
+    krnl::idt::init();
+    krnl::pics::init();
+    krnl::pics::enable();
 
-    drv::clk::pit::init();
+    krnl::pit::init();
 
-    x86::kernel::memory::init(boot_info);
-    x86::kernel::allocator::init(boot_info);
-    x86::kernel::acpi::init();
+    krnl::memory::init(boot_info);
+    krnl::allocator::init(boot_info);
+    krnl::acpi::init();
 
-    drv::ipd::kbd::init(api::kbd::Layout::QWERTY);
+    drv::input::kbd::init(api::kbd::Layout::QWERTY);
 }
 
 /// Halts execution of CPU until next interrupt.

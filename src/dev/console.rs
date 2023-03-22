@@ -52,21 +52,16 @@ pub(crate) fn enable_raw() { RAW_ENABLED.store(true, Ordering::SeqCst); }
 pub(crate) fn disable_raw() { RAW_ENABLED.store(false, Ordering::SeqCst); }
 
 pub fn key_handle(key: char) {
-    const ETX: char = ascii::ETX as char;
-    const EOT: char = ascii::EOT as char;
-    const BS: char = ascii::BS as char;
-    const ESC: char = ascii::ESC as char;
-
     let mut stdin = BUFFER.lock();
 
-    if key == BS && !is_raw_enabled() {
+    if key == ascii::ch::BS && !is_raw_enabled() {
         if let Some(c) = stdin.pop() {
             if is_echo_enabled() {
                 let n = match c {
-                    ETX | EOT | ESC => 2,
+                    ascii::ch::ETX | ascii::ch::EOT | ascii::ch::ESC => 2,
                     _ => if (c as u32) < 0xFF { 1 } else { c.len_utf8() },
                 };
-                print!("{}", BS.to_string().repeat(n));
+                print!("{}", ascii::ch::BS.to_string().repeat(n));
             }
         }
     } else {
@@ -74,9 +69,9 @@ pub fn key_handle(key: char) {
         stdin.push(key);
         if is_echo_enabled() {
             match key {
-                ETX => print!("^C"),
-                EOT => print!("^D"),
-                ESC => print!("^["),
+                ascii::ch::ETX => print!("^C"),
+                ascii::ch::EOT => print!("^D"),
+                ascii::ch::ESC => print!("^["),
                 _ => print!("{}", key),
             };
         }
@@ -107,17 +102,13 @@ pub fn read_char() -> char {
 }
 
 pub fn read_line() -> String {
-    const FF: char = ascii::FF as char;
-    const LF: char = ascii::LF as char;
-    const CR: char = ascii::CR as char;
-
     loop {
         system::halt();
         let res = instructions::interrupts::without_interrupts(
             || {
                 let mut stdin = BUFFER.lock();
                 match stdin.chars().next_back() {
-                    Some(CR) | Some(LF) | Some(FF) => {
+                    Some(ascii::ch::CR) | Some(ascii::ch::LF) | Some(ascii::ch::FF) => {
                         let line = stdin.clone();
                         stdin.clear();
                         Some(line)

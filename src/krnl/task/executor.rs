@@ -6,7 +6,7 @@ use core::task::{Context, Poll, Waker};
 use crossbeam_queue::ArrayQueue;
 use x86_64::instructions;
 
-use crate::arch::x86::kernel::task::{Task, TaskID};
+use crate::krnl::task::{Task, TaskID};
 
 ////////////////
 // Attributes

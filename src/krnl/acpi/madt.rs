@@ -20,10 +20,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-pub mod acpi;
-pub mod allocator;
-pub mod gdt;
-pub mod idt;
-pub mod memory;
-pub mod pics;
-pub mod task;
+use acpi::Sdt;
+
+use crate::println;
+
+#[derive(Debug)]
+#[repr(C)]
+struct MADTHeader {
+    signature: [u8; 4],
+}
+
+pub(super) fn parse(sdt: Sdt) {
+    println!("{}, {}, {}", sdt.physical_address, sdt.length, sdt.validated);
+}

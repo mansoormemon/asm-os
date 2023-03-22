@@ -20,5 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+pub mod acpi;
+pub mod allocator;
 pub mod cmos;
+pub mod gdt;
+pub mod idt;
+pub mod memory;
+pub mod pics;
 pub mod pit;
+pub mod power;
+pub mod task;

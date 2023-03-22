@@ -22,7 +22,7 @@
 
 use core::fmt;
 
-use crate::drv::clk;
+use crate::krnl;
 
 ///////////////
 // Globals
@@ -169,7 +169,7 @@ pub struct Clock;
 impl Clock {
     /// Returns the current time.
     pub fn now() -> TimePoint {
-        let rtc = clk::cmos::RTC::new();
+        let rtc = krnl::cmos::RTC::new();
 
         TimePoint {
             year: rtc.year,

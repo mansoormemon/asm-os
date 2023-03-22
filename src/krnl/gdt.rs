@@ -28,7 +28,7 @@ use x86_64::instructions::segmentation::Segment;
 use x86_64::structures::gdt::{Descriptor, GlobalDescriptorTable, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 
-use crate::arch::x86::kernel::memory;
+use crate::krnl::memory;
 use crate::success;
 
 ////////////////
@@ -90,7 +90,7 @@ lazy_static! {
     ///
     /// The Global Descriptor Table (GDT) is a relic that was used for memory segmentation before paging
     /// became the de facto standard. However, it is still needed in 64-bit mode for various things,
-    /// such as kernel/user mode configuration or TSS loading.
+    /// such as krnl/user mode configuration or TSS loading.
     ///
     /// The GDT is a structure that contains the segments of the program. It was used on older
     /// architectures to isolate programs from each other before paging became the standard.

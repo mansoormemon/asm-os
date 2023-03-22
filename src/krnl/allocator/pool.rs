@@ -25,7 +25,7 @@ use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 use core::ptr::NonNull;
 
-use crate::arch::x86::kernel::allocator::Locked;
+use crate::krnl::allocator::Locked;
 
 ////////////////
 // Attributes

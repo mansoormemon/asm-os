@@ -28,9 +28,9 @@ use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 use crate::{hlt_loop, println, success};
-use crate::arch::x86::kernel::gdt;
-use crate::arch::x86::kernel::pics;
-use crate::arch::x86::kernel::pics::PICS_8259;
+use crate::krnl::gdt;
+use crate::krnl::pics;
+use crate::krnl::pics::PICS_8259;
 
 /// Maps the interrupt handler.
 macro_rules! map_irq_handler {

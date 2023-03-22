@@ -26,9 +26,9 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use x86_64::instructions;
 use x86_64::instructions::port::Port;
 
-use crate::arch::x86::kernel::idt;
-use crate::arch::x86::kernel::idt::IRQ;
-use crate::drv::clk::cmos::CMOS;
+use crate::krnl::idt;
+use crate::krnl::idt::IRQ;
+use crate::krnl::cmos::CMOS;
 use crate::success;
 
 // Programmable Interval Timer (PIT | Intel 8253/8254)

@@ -33,7 +33,7 @@ pub use bump::BumpAllocator;
 pub use linked_list::LinkedListAllocator;
 pub use pool::PoolAllocator;
 
-use crate::arch::x86::kernel::memory;
+use crate::krnl::memory;
 use crate::success;
 
 mod bump;

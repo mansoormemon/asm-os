@@ -24,8 +24,8 @@ use core::{mem, ptr};
 use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 
-use crate::arch::x86::kernel::allocator;
-use crate::arch::x86::kernel::allocator::Locked;
+use crate::krnl::allocator;
+use crate::krnl::allocator::Locked;
 
 /////////////////
 /// List Node

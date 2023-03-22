@@ -36,7 +36,7 @@ use bootloader::{BootInfo, entry_point};
 
 use asm_os::{hlt_loop, init};
 use asm_os::aux::testing::serene_test_panic_handler;
-use asm_os::kernel::allocator::HEAP_SIZE;
+use asm_os::krnl::allocator::HEAP_SIZE;
 
 entry_point!(main);
 

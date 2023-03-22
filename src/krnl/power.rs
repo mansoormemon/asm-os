@@ -20,4 +20,32 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-pub mod kernel;
+/////////////////
+// Utilities
+/////////////////
+
+use core::arch::asm;
+use core::sync::atomic::Ordering;
+use x86_64::instructions::port::Port;
+use crate::krnl::acpi::{dsdt, fadt};
+
+/// Shuts down the machine.
+pub(crate) fn shutdown() {
+    // todo: proper data encapsulation variables.
+    let pm_1a_cnt_blk = fadt::PM_1A_CONTROL_BLOCK.load(Ordering::Relaxed);
+    let slp_typa = dsdt::SLP_TYPA.load(Ordering::Relaxed);
+
+    let mut port_pm_1a = Port::new(pm_1a_cnt_blk as u16);
+    unsafe {
+        port_pm_1a.write(slp_typa | dsdt::SLP_EN);
+    }
+}
+
+pub fn reboot() {
+    unsafe {
+        asm!(
+        "xor rax, rax",
+        "mov cr3, rax",
+        );
+    }
+}

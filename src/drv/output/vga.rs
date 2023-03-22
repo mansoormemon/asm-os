@@ -320,19 +320,19 @@ impl Writer {
     /// Writes the given byte to the VGA buffer.
     fn write_byte(&mut self, byte: u8) {
         match byte {
-            ascii::LF => {
+            ascii::bt::LF => {
                 self.linefeed();
             }
-            ascii::BS => {
+            ascii::bt::BS => {
                 self.backspace();
             }
-            ascii::HT => {
+            ascii::bt::HT => {
                 self.h_tab();
             }
-            ascii::CR => {
+            ascii::bt::CR => {
                 self.carriage_return();
             }
-            ascii::FF => {
+            ascii::bt::FF => {
                 self.form_feed();
             }
             byte => {
@@ -375,7 +375,7 @@ impl Writer {
     fn backspace(&mut self) {
         if self.col_pos > 0 {
             let blank = ScreenChar {
-                ascii_char: ascii::SP,
+                ascii_char: ascii::bt::SP,
                 color_code: self.color_code,
             };
             self.col_pos -= 1;
@@ -386,7 +386,7 @@ impl Writer {
     /// Outputs a tab.
     fn h_tab(&mut self) {
         for _ in 0..get_tab_width() as usize {
-            self.write_byte(ascii::SP);
+            self.write_byte(ascii::bt::SP);
         }
     }
 
@@ -396,13 +396,13 @@ impl Writer {
     /// Outputs a form feed.
     fn form_feed(&mut self) {
         self.linefeed();
-        self.write_byte(ascii::SP);
+        self.write_byte(ascii::bt::SP);
     }
 
     /// Clears the right of the given row.
     fn clear_row_right(&mut self, row: usize, begin: usize) {
         let blank = ScreenChar {
-            ascii_char: ascii::SP,
+            ascii_char: ascii::bt::SP,
             color_code: self.color_code,
         };
         for col in begin..self.cols() {
@@ -413,7 +413,7 @@ impl Writer {
     /// Clears the left of the given row.
     fn clear_row_left(&mut self, row: usize, end: usize) {
         let blank = ScreenChar {
-            ascii_char: ascii::SP,
+            ascii_char: ascii::bt::SP,
             color_code: self.color_code,
         };
         for col in 0..end {
@@ -753,7 +753,7 @@ pub fn _print(args: fmt::Arguments) {
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::drv::opd::vga::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::drv::output::vga::_print(format_args!($($arg)*)));
 }
 
 #[macro_export]

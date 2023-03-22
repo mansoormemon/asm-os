@@ -24,8 +24,8 @@ use core::alloc::GlobalAlloc;
 use core::alloc::Layout;
 use core::ptr;
 
-use crate::arch::x86::kernel::allocator;
-use crate::arch::x86::kernel::allocator::Locked;
+use crate::krnl::allocator;
+use crate::krnl::allocator::Locked;
 
 //////////////////////
 /// Bump Allocator

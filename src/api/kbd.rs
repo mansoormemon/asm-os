@@ -1,6 +1,6 @@
 use core::str::FromStr;
 
-use crate::drv::ipd;
+use crate::drv::input;
 
 ///////////////
 /// Default
@@ -60,10 +60,10 @@ impl FromStr for Layout {
 }
 
 /// Returns the layout.
-pub fn get_layout() -> Layout { ipd::kbd::get_layout() }
+pub fn get_layout() -> Layout { input::kbd::get_layout() }
 
 /// Sets the layout.
-pub fn set_layout(lyt: Layout) { ipd::kbd::set_layout(lyt); }
+pub fn set_layout(lyt: Layout) { input::kbd::set_layout(lyt); }
 
 /// Resets the layout.
-pub fn reset_layout() { ipd::kbd::reset_layout(); }
+pub fn reset_layout() { input::kbd::reset_layout(); }
