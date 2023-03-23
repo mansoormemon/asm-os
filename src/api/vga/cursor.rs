@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2023 Mansoor Ahmed Memon
+// Copyright (c) 2023 Mansoor Ahmed Memon.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,8 @@ use core::str::FromStr;
 // Globals
 /////////////
 
-/// Number of supported styles.
-pub const TOTAL_STYLES: usize = 2;
-
-// List of styles.
-pub const STYLES: [Style; TOTAL_STYLES] = [
+/// Available styles.
+pub const STYLES: [Style; 2] = [
     Style::Underscore,
     Style::Block
 ];

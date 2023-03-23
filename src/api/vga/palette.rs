@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2023 Mansoor Ahmed Memon
+// Copyright (c) 2023 Mansoor Ahmed Memon.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,21 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crate::api::vga::color::TOTAL_COLORS;
-
-/////////////
-// Globals
-/////////////
-
-/// Size of palette.
-pub const PALETTE_SIZE: usize = TOTAL_COLORS;
-
-///////////////
-/// Palette
-///////////////
-pub struct Palette {
-    pub colors: [(u8, u8, u8); PALETTE_SIZE],
-}
+use rx::Palette;
 
 /// Default Color Palette.
 pub const DEFAULT: Palette = Palette {
@@ -299,3 +285,12 @@ pub const MATERIAL_PALENIGHT_HC: Palette = Palette {
         (0xFF, 0xFF, 0xFF),
     ],
 };
+
+pub(super) mod rx {
+    ///////////////
+    /// Palette
+    ///////////////
+    pub struct Palette {
+        pub colors: [(u8, u8, u8); 16],
+    }
+}

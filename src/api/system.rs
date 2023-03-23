@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2023 Mansoor Ahmed Memon
+// Copyright (c) 2023 Mansoor Ahmed Memon.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,44 +20,44 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use crate::krnl;
+use crate::kernel;
 
 ///////////////
 // Utilities
 ///////////////
 
 /// Returns where the PIT is initialized or not.
-pub fn is_timer_initialized() -> bool { krnl::pit::is_initialized() }
+pub fn is_timer_initialized() -> bool { kernel::pit::is_initialized() }
 
 /// Returns the duration between successive ticks.
-pub fn tick_interval() -> f64 { krnl::pit::tick_interval() }
+pub fn tick_interval() -> f64 { kernel::pit::tick_interval() }
 
 /// Returns the ticks elapsed since PIT was initialized.
-pub fn ticks() -> usize { krnl::pit::ticks() }
+pub fn ticks() -> usize { kernel::pit::ticks() }
 
 /// Returns the latest RTC clock update tick.
-pub fn last_rtc_update() -> usize { krnl::pit::last_rtc_update() }
+pub fn last_rtc_update() -> usize { kernel::pit::last_rtc_update() }
 
 /// Returns the Read Time-Stamp Counter (RDTSC).
 ///
 /// Reference: https://www.felixcloutier.com/x86/rdtsc
-pub fn rdtsc() -> u64 { krnl::pit::rdtsc() }
+pub fn rdtsc() -> u64 { kernel::pit::rdtsc() }
 
 /// Returns the time elapsed since the PIT was initialized.
-pub fn uptime() -> f64 { krnl::pit::uptime() }
+pub fn uptime() -> f64 { kernel::pit::uptime() }
 
 /// Halts the CPU.
 ///
 /// Note: It restores the state of interrupts (whether enabled or disabled) after execution.
-pub fn halt() { krnl::pit::halt(); }
+pub fn halt() { kernel::pit::halt(); }
 
 /// Halts the CPU for the specified duration.
-pub fn sleep(seconds: f64) { krnl::pit::sleep(seconds); }
+pub fn sleep(seconds: f64) { kernel::pit::sleep(seconds); }
 
 /// Shuts down the machine.
-pub fn shutdown() { krnl::power::shutdown(); }
+pub fn shutdown() { kernel::power::shutdown(); }
 
-pub fn reboot() { krnl::power::reboot(); }
+pub fn reboot() { kernel::power::reboot(); }
 
 /// Returns the instantaneous UNIX timestamp.
 pub fn timestamp() -> u64 {
@@ -81,7 +81,7 @@ pub fn timestamp() -> u64 {
         DAYS_BEFORE_MONTH[(month as usize) - 1] + (leap_day as u64)
     };
 
-    let rtc = krnl::cmos::RTC::new();
+    let rtc = kernel::cmos::RTC::new();
     let timestamp = SECONDS_IN_DAY * days_before_year(rtc.year as u64)
         + SECONDS_IN_DAY * days_before_month(rtc.year as u64, rtc.month as u64)
         + SECONDS_IN_DAY * ((rtc.day - 1) as u64)

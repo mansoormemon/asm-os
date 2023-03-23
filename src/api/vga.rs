@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2023 Mansoor Ahmed Memon
+// Copyright (c) 2023 Mansoor Ahmed Memon.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,11 +22,12 @@
 
 use x86_64::instructions;
 
-use crate::api::vga::color::Color;
-use crate::api::vga::font::Font;
-use crate::api::vga::palette::Palette;
-use crate::drv::output;
-use crate::drv::output::vga::WRITER;
+pub use color::rx::*;
+pub use font::*;
+pub use palette::rx::*;
+
+use crate::drivers;
+use crate::drivers::vga::WRITER;
 
 pub mod color;
 pub mod cursor;
@@ -55,23 +56,23 @@ pub fn rows() -> usize {
 }
 
 /// Returns the columns in the VGA buffer.
-pub fn cols() -> usize {
+pub fn columns() -> usize {
     instructions::interrupts::without_interrupts(
-        || { WRITER.lock().cols() }
+        || { WRITER.lock().columns() }
     )
 }
 
 /// Returns the cursor's position.
-pub fn get_cursor_pos() -> (usize, usize) {
+pub fn get_cursor_position() -> (usize, usize) {
     instructions::interrupts::without_interrupts(
-        || { WRITER.lock().get_cursor_pos() }
+        || { WRITER.lock().get_cursor_position() }
     )
 }
 
 /// Moves the cursor to the specified position.
-pub fn set_cursor_pos(row: usize, col: usize) {
+pub fn set_cursor_position(row: usize, col: usize) {
     instructions::interrupts::without_interrupts(
-        || { WRITER.lock().set_cursor_pos(row, col); }
+        || { WRITER.lock().set_cursor_position(row, col); }
     );
 }
 
@@ -167,31 +168,31 @@ pub fn clear() {
 }
 
 /// Returns whether the cursor is enabled or not.
-pub fn is_cursor_enabled() -> bool { output::vga::is_cursor_enabled() }
+pub fn is_cursor_enabled() -> bool { drivers::vga::is_cursor_enabled() }
 
 /// Enables the cursor.
-pub fn enable_cursor() { output::vga::enable_cursor(); }
+pub fn enable_cursor() { drivers::vga::enable_cursor(); }
 
 /// Disables the cursor.
-pub fn disable_cursor() { output::vga::disable_cursor(); }
+pub fn disable_cursor() { drivers::vga::disable_cursor(); }
 
 /// Returns the current tab width.
-pub fn get_tab_width() -> u8 { output::vga::get_tab_width() }
+pub fn get_tab_width() -> u8 { drivers::vga::get_tab_width() }
 
 /// Sets tab width.
-pub fn set_tab_width(tab_width: u8) { output::vga::set_tab_width(tab_width); }
+pub fn set_tab_width(tab_width: u8) { drivers::vga::set_tab_width(tab_width); }
 
 /// Resets the tab width.
-pub fn reset_tab_width() { output::vga::reset_tab_width(); }
+pub fn reset_tab_width() { drivers::vga::reset_tab_width(); }
 
 /// Returns the current cursor style.
-pub fn get_cursor_style() -> cursor::Style { output::vga::get_cursor_style() }
+pub fn get_cursor_style() -> cursor::Style { drivers::vga::get_cursor_style() }
 
 /// Sets the cursor style.
-pub fn set_cursor_style(cursor_style: cursor::Style) { output::vga::set_cursor_style(cursor_style); }
+pub fn set_cursor_style(cursor_style: cursor::Style) { drivers::vga::set_cursor_style(cursor_style); }
 
 /// Resets the cursor style.
-pub fn reset_cursor_style() { output::vga::reset_cursor_style(); }
+pub fn reset_cursor_style() { drivers::vga::reset_cursor_style(); }
 
 /// Sets the location for the underline.
-pub fn set_underline_location(location: u8) { output::vga::set_underline_location(location); }
+pub fn set_underline_location(location: u8) { drivers::vga::set_underline_location(location); }

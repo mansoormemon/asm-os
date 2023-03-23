@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2023 Mansoor Ahmed Memon
+// Copyright (c) 2023 Mansoor Ahmed Memon.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
 #![feature(custom_test_frameworks)]
 #![feature(poll_ready)]
 #![feature(exclusive_range_pattern)]
-#![test_runner(crate::aux::testing::serene_test_runner)]
+#![test_runner(crate::auxiliary::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
@@ -41,17 +41,17 @@ use bootloader::BootInfo;
 use bootloader::entry_point;
 use x86_64::instructions;
 
-use crate::aux::logger;
-use crate::aux::logger::LogLevel;
+use crate::auxiliary::logger;
+use crate::auxiliary::logger::{LogLevel, LogResult};
 #[cfg(test)]
-use crate::aux::testing::serene_test_panic_handler;
+use crate::auxiliary::testing::serene_test_panic_handler;
 
 pub mod api;
-pub mod aux;
-pub mod cenc;
-pub mod dev;
-pub mod drv;
-pub mod krnl;
+pub mod auxiliary;
+pub mod encodings;
+pub mod devices;
+pub mod drivers;
+pub mod kernel;
 pub mod usr;
 
 #[cfg(test)]
@@ -59,7 +59,7 @@ entry_point!(test_kernel_main);
 
 #[cfg(test)]
 fn test_kernel_main(boot_info: &'static BootInfo) -> ! {
-    init(boot_info, false);
+    init(boot_info, LogLevel::Omneity);
     test_main();
     hlt_loop();
 }
@@ -69,23 +69,22 @@ fn test_kernel_main(boot_info: &'static BootInfo) -> ! {
 fn panic(info: &PanicInfo) -> ! { serene_test_panic_handler(info); }
 
 /// Initializes all sub-modules.
-pub fn init(boot_info: &'static BootInfo, silent_boot: bool) {
-    drv::output::vga::init();
+pub fn init(boot_info: &'static BootInfo, log_lvl: LogLevel) {
+    drivers::vga::init().log("VGA", "initialized");
 
-    logger::init(if silent_boot { LogLevel::Quiet } else { LogLevel::Apprise });
+    logger::init(log_lvl).ok();
 
-    krnl::gdt::init();
-    krnl::idt::init();
-    krnl::pics::init();
-    krnl::pics::enable();
+    kernel::gdt::init().log("GDT", "initialized");
+    kernel::idt::init().log("IDT", "initialized");
+    kernel::pics::init().log("PICS", "initialized");
+    kernel::pics::enable().log("PICS", "interrupts enabled");
+    kernel::pit::init().log("PIT", "initialized");
 
-    krnl::pit::init();
+    kernel::memory::init(boot_info).log("Memory", "initialized");
+    kernel::allocator::init(boot_info).log("Allocator", "initialized");
+    kernel::acpi::init().log("ACPI", "initialized");
 
-    krnl::memory::init(boot_info);
-    krnl::allocator::init(boot_info);
-    krnl::acpi::init();
-
-    drv::input::kbd::init(api::kbd::Layout::QWERTY);
+    drivers::keyboard::init(api::keyboard::Layout::QWERTY).log("Keyboard", "initialized");
 }
 
 /// Halts execution of CPU until next interrupt.

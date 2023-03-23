@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2023 Mansoor Ahmed Memon
+// Copyright (c) 2023 Mansoor Ahmed Memon.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
-#![test_runner(asm_os::aux::testing::serene_test_runner)]
+#![test_runner(asm_os::auxiliary::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
@@ -35,13 +35,14 @@ use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
 
 use asm_os::{hlt_loop, init};
-use asm_os::aux::testing::serene_test_panic_handler;
-use asm_os::krnl::allocator::HEAP_SIZE;
+use asm_os::auxiliary::logger::LogLevel;
+use asm_os::auxiliary::testing::serene_test_panic_handler;
+use asm_os::kernel::allocator::HEAP_SIZE;
 
 entry_point!(main);
 
 fn main(boot_info: &'static BootInfo) -> ! {
-    init(boot_info, false);
+    init(boot_info, LogLevel::Omneity);
     test_main();
     hlt_loop();
 }
