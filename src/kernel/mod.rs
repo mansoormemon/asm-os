@@ -22,6 +22,7 @@
 
 pub mod acpi;
 pub mod allocator;
+pub mod apic;
 pub mod cmos;
 pub mod gdt;
 pub mod idt;

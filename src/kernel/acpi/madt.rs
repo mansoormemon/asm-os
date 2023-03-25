@@ -20,8 +20,37 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+use acpi::AcpiError;
+use acpi::InterruptModel;
 use acpi::madt::Madt;
+use acpi::platform::ProcessorInfo;
+use conquer_once::spin::OnceCell;
 
-pub(super) fn read(_sdt: &Madt) -> Result<(), ()> {
+///////////////////
+// Cached Values
+///////////////////
+
+static INTERRUPT_MODEL: OnceCell<Option<InterruptModel>> = OnceCell::uninit();
+static PROCESSOR_INFO: OnceCell<Option<ProcessorInfo>> = OnceCell::uninit();
+
+pub(super) fn read(sdt: &Madt) -> Result<(), AcpiError> {
+    let (interrupt_model, processor_info) = sdt.parse_interrupt_model()?;
+
+    INTERRUPT_MODEL.try_init_once(
+        || { Some(interrupt_model) }
+    ).expect("failed to initialize interrupt model");
+
+    PROCESSOR_INFO.try_init_once(
+        || { processor_info }
+    ).expect("failed to initialize processor info");
+
     Ok(())
+}
+
+pub fn get_interrupt_model() -> Option<&'static InterruptModel> {
+    INTERRUPT_MODEL.try_get().unwrap_or(&None).as_ref()
+}
+
+pub fn get_processor_info() -> Option<&'static ProcessorInfo> {
+    PROCESSOR_INFO.try_get().unwrap_or(&None).as_ref()
 }

@@ -168,32 +168,32 @@ pub(crate) fn set_irq_handler(pin: IRQ, handler: fn()) {
 /// Sets interrupt mask for the specified index.
 #[allow(dead_code)]
 fn set_interrupt_mask(idx: u8) {
-    let (interrupt_line, port_addr) = if idx < pics::M_PIN_COUNT {
+    let (interrupt_line, port_num) = if idx < pics::M_PIN_COUNT {
         (idx, pics::M_DATA_PORT)
     } else {
         (idx - pics::M_PIN_COUNT, pics::S_DATA_PORT)
     };
 
-    let mut port = Port::new(port_addr);
+    let mut port = Port::<u8>::new(port_num);
 
     unsafe {
-        let byte: u8 = port.read();
+        let byte = port.read();
         port.write(byte | (1 << interrupt_line));
     }
 }
 
 /// Clears interrupt mask for the specified index.
 fn clear_interrupt_mask(idx: u8) {
-    let (interrupt_line, port_addr) = if idx < pics::M_PIN_COUNT {
+    let (interrupt_line, port_num) = if idx < pics::M_PIN_COUNT {
         (idx, pics::M_DATA_PORT)
     } else {
         (idx - pics::M_PIN_COUNT, pics::S_DATA_PORT)
     };
 
-    let mut port = Port::new(port_addr);
+    let mut port = Port::<u8>::new(port_num);
 
     unsafe {
-        let byte: u8 = port.read();
+        let byte = port.read();
         port.write(byte & !(1 << interrupt_line));
     }
 }

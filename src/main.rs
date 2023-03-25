@@ -32,13 +32,13 @@ use core::panic::PanicInfo;
 
 use bootloader::{BootInfo, entry_point};
 
-use asm_os::api::vga;
+use asm_os::init;
+use asm_os::api::{system, vga};
 use asm_os::auxiliary::logger::LogLevel;
 #[cfg(test)]
 use asm_os::auxiliary::testing::serene_test_panic_handler;
 #[cfg(not(test))]
 use asm_os::hlt_loop;
-use asm_os::init;
 use asm_os::kernel::task::{Executor, Task};
 use asm_os::println;
 use asm_os::usr;

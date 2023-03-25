@@ -82,11 +82,13 @@ pub fn timestamp() -> u64 {
     };
 
     let rtc = kernel::cmos::RTC::new();
+
     let timestamp = SECONDS_IN_DAY * days_before_year(rtc.year as u64)
         + SECONDS_IN_DAY * days_before_month(rtc.year as u64, rtc.month as u64)
         + SECONDS_IN_DAY * ((rtc.day - 1) as u64)
         + SECONDS_IN_HOUR * rtc.hour as u64
         + SECONDS_IN_MINUTE * rtc.minute as u64
         + rtc.second as u64;
+
     timestamp
 }

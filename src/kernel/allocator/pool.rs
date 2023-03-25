@@ -62,7 +62,7 @@ impl PoolAllocator {
 
     /// Initializes the allocator.
     pub unsafe fn init(&mut self, heap_start: usize, heap_end: usize) {
-        self.fallback_allocator.init(heap_start, heap_end);
+        self.fallback_allocator.init(heap_start as *mut u8, heap_end);
     }
 
     /// Allocates memory using fallback allocator.

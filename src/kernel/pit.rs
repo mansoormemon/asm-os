@@ -167,7 +167,7 @@ pub(crate) fn set_pit_frequency_divider(divider: u16, channel: u8) {
         || {
             const TOTAL_CHANNELS: usize = 3;
 
-            const DATA_PORTS: [u16; TOTAL_CHANNELS] = [0x40u16, 0x41u16, 0x42u16];
+            const DATA_PORT_NUMS: [u16; TOTAL_CHANNELS] = [0x40, 0x41, 0x42];
             const CMD_PORT: u16 = 0x43;
 
             const OP_MODE: u16 = 0x6;
@@ -178,7 +178,7 @@ pub(crate) fn set_pit_frequency_divider(divider: u16, channel: u8) {
 
             let bytes = divider.to_le_bytes();
             let mut cmd = Port::new(CMD_PORT);
-            let mut data = Port::new(DATA_PORTS[channel as usize]);
+            let mut data = Port::new(DATA_PORT_NUMS[channel as usize]);
             unsafe {
                 cmd.write(channel_mask | ACCESS_MODE | OP_MODE);
                 for byte in bytes {
