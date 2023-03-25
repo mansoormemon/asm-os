@@ -133,7 +133,7 @@ pub(crate) fn init(lyt: Layout) -> Result<(), ()> {
     set_layout(lyt);
 
     // Set interrupt handler.
-    idt::set_irq_handler(IRQ::Keyboard, keyboard_irq_handler);
+    // idt::set_irq_handler(IRQ::Keyboard, keyboard_irq_handler);
 
     Ok(())
 }

@@ -29,7 +29,6 @@ use x86_64::registers::model_specific::Msr;
 
 use crate::{omneity, print, println};
 use crate::kernel::{acpi, idt, memory, pics, pit};
-use crate::kernel::idt::IRQ;
 
 macro_rules! define {
 ($name:ident, $val:expr) => {
@@ -114,10 +113,45 @@ unsafe fn local_apic_get_id(base: usize) -> u32
     local_apic_in(base, LAPIC_ID) >> 24
 }
 
+define!(IOREGSEL,  0x00);
+define!(IOWIN,     0x10);
+
+// ------------------------------------------------------------------------------------------------
+// IO APIC Registers
+define!(IOAPICID,  0x00);
+define!(IOAPICVER, 0x01);
+define!(IOAPICARB, 0x02);
+define!(IOREDTBL,  0x10);
+
+unsafe fn io_apic_out(base: usize, reg: u8, value: u32) {
+    let tgt_io_reg_sel = base + IOREGSEL;
+    let tgt_io_reg_sel = tgt_io_reg_sel as *mut u32;
+    core::ptr::write_volatile(tgt_io_reg_sel, reg as u32);
+
+    let tgt_io_win = base + IOWIN;
+    let tgt_io_win = tgt_io_win as *mut u32;
+    core::ptr::write_volatile(tgt_io_win, value);
+}
+
+unsafe fn io_apic_in(base: usize, reg: u8) -> u32 {
+    let tgt_io_reg_sel = base + IOREGSEL;
+    let tgt_io_reg_sel = tgt_io_reg_sel as *mut u32;
+    core::ptr::write_volatile(tgt_io_reg_sel, reg as u32);
+
+    let tgt_io_win = base + IOWIN;
+    let tgt_io_win = tgt_io_win as *mut u32;
+    core::ptr::read_volatile(tgt_io_win)
+}
+
+unsafe fn io_apic_set_entry(base: usize, index: u8, data: u64) {
+    io_apic_out(base, (IOREDTBL + (index as usize) * 2) as u8, data as u32);
+    io_apic_out(base, (IOREDTBL + (index as usize) * 2 + 1) as u8, (data >> 32) as u32);
+}
+
+
 pub(crate) fn init() -> Result<(), ()> {
     let apic = acpi::madt::get_interrupt_model().unwrap();
     let proc_info = acpi::madt::get_processor_info().unwrap();
-
 
     pub const APIC_BASE: u32 = 0x1B;
 
@@ -142,18 +176,58 @@ pub(crate) fn init() -> Result<(), ()> {
 
             local_apic_out(base, LAPIC_TDCR, 0x3);
             local_apic_out(base, LAPIC_TICR, 0xFFFFFFFF);
-            pit::sleep(0.01);
+            // pit::sleep(0.01);
             local_apic_out(base, LAPIC_TIMER, 0);
-            unsafe { pics::PIC_8259.lock().disable(); }
 
+            println!("{:?}", pics::PIC_8259.lock().read_masks());
             let TMR_PERIODIC = 0x20000;
 
             let ticks_in_10_ms = 0xFFFFFFFF - local_apic_in(base, LAPIC_TCCR);
             local_apic_out(base, LAPIC_TIMER, 32 | TMR_PERIODIC);
             local_apic_out(base, LAPIC_TDCR, 0x3);
             local_apic_out(base, LAPIC_TICR, ticks_in_10_ms);
+            pics::PIC_8259.lock().disable();
 
-            idt::set_irq_handler(IRQ::Timer, interrupt_hander_apic_timer);
+            for (io_apic, iso) in apic.io_apics.iter().zip(apic.interrupt_source_overrides.iter()) {
+                let address = memory::phys_to_virt_addr(PhysAddr::new(io_apic.address as u64));
+                let address = address.as_u64();
+                let mut ioapic = x86::apic::ioapic::IoApic::new(address as usize);
+                omneity!("{:?}", (
+                    ioapic.id(),
+                    ioapic.version(),
+                    ioapic.supported_interrupts(),
+                ));
+                for i in 0..ioapic.supported_interrupts() {
+                    ioapic.enable(0, 0);
+                }
+                if iso.isa_source != 1 {
+                    // Get number of entries supported by the IO APIC
+                    let x: u32 = io_apic_in(address as usize, IOAPICVER as u8);
+                    let count: u32 = ((x >> 16) & 0xff) + 1;
+                    // maximum redirection entry
+                    omneity!("I/O APIC pins = {}", count);
+
+                    // Disable all entries
+                    for i in 0..count {
+                        // io_apic_set_entry(address as usize, i as u8, 1 << 16);
+
+                        let entry = IOREDTBL + (i * 2) as usize;
+
+                        io_apic_set_entry(address as usize, i as u8, (0x20 + i) as u64);
+                    }
+
+                    let isr = 1; // keyboard
+                    let mut entry = IOREDTBL + (isr * 2) as usize;
+                    omneity!("{:b}", entry);
+                    entry &= !0x700;
+                    omneity!("{:b}", entry);
+                    entry &= !0x800;
+                    omneity!("{:b}", entry);
+                    entry |= ((local_apic_get_id(base) as usize) << 56);
+                    omneity!("{:b}", entry);
+                    // io_apic_set_entry(address as usize, isr as u8, entry as u64);
+                }
+            }
         }
         _ => {}
     }

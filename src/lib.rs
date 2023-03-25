@@ -83,9 +83,10 @@ pub fn init(boot_info: &'static BootInfo, log_lvl: LogLevel) {
     kernel::memory::init(boot_info).log("Memory", "initialized");
     kernel::allocator::init(boot_info).log("Allocator", "initialized");
     kernel::acpi::init().log("ACPI", "initialized");
+    drivers::keyboard::init(api::keyboard::Layout::QWERTY).log("Keyboard", "initialized");
+
     kernel::apic::init().log("APIC", "initialized");
 
-    drivers::keyboard::init(api::keyboard::Layout::QWERTY).log("Keyboard", "initialized");
 }
 
 /// Halts execution of CPU until next interrupt.

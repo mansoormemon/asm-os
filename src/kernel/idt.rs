@@ -27,7 +27,7 @@ use x86_64::instructions;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
-use crate::{hlt_loop, println};
+use crate::{hlt_loop, omneity, println};
 use crate::kernel::gdt;
 use crate::kernel::pics;
 use crate::kernel::pics::PIC_8259;
@@ -116,7 +116,7 @@ pub enum IRQ {
 
 impl IRQ {
     /// Default handler.
-    fn default_handler() {}
+    fn default_handler() { omneity!("event occured!"); }
 
     /// Converts index to pin.
     pub fn index_to_pin(idx: u8) -> u8 { pics::M_OFFSET + idx }
