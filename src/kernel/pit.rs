@@ -194,7 +194,7 @@ pub(crate) fn set_pit_frequency_divider(divider: u16, channel: u8) {
 //////////////
 
 /// Interrupt handler for timer.
-fn timer_irq_handler() { TICKS.fetch_add(1, Ordering::Relaxed); }
+pub(crate) fn timer_irq_handler() { TICKS.fetch_add(1, Ordering::Relaxed); }
 
 /// Interrupt handler for RTC.
 fn rtc_irq_handler() {

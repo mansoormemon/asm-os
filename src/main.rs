@@ -53,6 +53,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     println!("{}", format_args!("{: ^99}", "\x1B[34mWelcome to \x1B[35masmOS\x1B[34m!\x1B[0m"));
     println!();
 
+    loop {
+        println!("{}", system::uptime());
+        system::sleep(1.0);
+    }
+
     #[cfg(test)]
     test_main();
 

@@ -47,10 +47,6 @@ pub(super) fn read(sdt: &Madt) -> Result<(), AcpiError> {
     Ok(())
 }
 
-pub fn get_interrupt_model() -> Option<&'static InterruptModel> {
-    INTERRUPT_MODEL.try_get().unwrap_or(&None).as_ref()
-}
+pub fn get_interrupt_model() -> Option<&'static InterruptModel> { INTERRUPT_MODEL.try_get().unwrap_or(&None).as_ref() }
 
-pub fn get_processor_info() -> Option<&'static ProcessorInfo> {
-    PROCESSOR_INFO.try_get().unwrap_or(&None).as_ref()
-}
+pub fn get_processor_info() -> Option<&'static ProcessorInfo> { PROCESSOR_INFO.try_get().unwrap_or(&None).as_ref() }
