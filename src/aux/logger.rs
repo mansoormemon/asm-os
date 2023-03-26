@@ -165,32 +165,32 @@ pub fn _omneity(fmt: fmt::Arguments) { _log(LogLevel::Omneity, fmt); }
 
 #[macro_export]
 macro_rules! log {
-    ($log_level:expr, $($arg:tt)*) => ($crate::auxiliary::logger::_log($log_level, format_args!($($arg)*)));
+    ($log_level:expr, $($arg:tt)*) => ($crate::aux::logger::_log($log_level, format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! failure {
-    ($($arg:tt)*) => ($crate::auxiliary::logger::_failure(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::aux::logger::_failure(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! warning {
-    ($($arg:tt)*) => ($crate::auxiliary::logger::_warning(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::aux::logger::_warning(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! success {
-    ($($arg:tt)*) => ($crate::auxiliary::logger::_success(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::aux::logger::_success(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! apprise {
-    ($($arg:tt)*) => ($crate::auxiliary::logger::_apprise(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::aux::logger::_apprise(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! omneity {
-    ($($arg:tt)*) => ($crate::auxiliary::logger::_omneity(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::aux::logger::_omneity(format_args!($($arg)*)));
 }
 
 //////////////////

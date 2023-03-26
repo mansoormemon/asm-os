@@ -58,37 +58,3 @@ pub fn sleep(seconds: f64) { kernel::pit::sleep(seconds); }
 pub fn shutdown() { kernel::power::shutdown(); }
 
 pub fn reboot() { kernel::power::reboot(); }
-
-/// Returns the instantaneous UNIX timestamp.
-pub fn timestamp() -> u64 {
-    use crate::api::chrono::{DAYS_IN_LEAP_YEAR, DAYS_IN_YEAR, SECONDS_IN_DAY, SECONDS_IN_HOUR, SECONDS_IN_MINUTE};
-
-    const EPOCH: u64 = 1970;
-    const DAYS_BEFORE_MONTH: [u64; 13] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
-
-    let is_leap_year = |year: u64| -> bool {
-        (year % 400 == 0) || ((year % 4 == 0) && (year % 100 != 0))
-    };
-
-    let days_before_year = |year: u64| -> u64 {
-        (EPOCH..year).fold(0, |days: u64, y: u64| -> u64 {
-            days + if is_leap_year(y) { DAYS_IN_LEAP_YEAR } else { DAYS_IN_YEAR }
-        })
-    };
-
-    let days_before_month = |year: u64, month: u64| -> u64 {
-        let leap_day = is_leap_year(year) && month > 2;
-        DAYS_BEFORE_MONTH[(month as usize) - 1] + (leap_day as u64)
-    };
-
-    let rtc = kernel::cmos::RTC::new();
-
-    let timestamp = SECONDS_IN_DAY * days_before_year(rtc.year as u64)
-        + SECONDS_IN_DAY * days_before_month(rtc.year as u64, rtc.month as u64)
-        + SECONDS_IN_DAY * ((rtc.day - 1) as u64)
-        + SECONDS_IN_HOUR * rtc.hour as u64
-        + SECONDS_IN_MINUTE * rtc.minute as u64
-        + rtc.second as u64;
-
-    timestamp
-}

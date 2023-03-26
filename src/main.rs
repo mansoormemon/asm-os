@@ -23,7 +23,7 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
-#![test_runner(asm_os::auxiliary::testing::serene_test_runner)]
+#![test_runner(asm_os::aux::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
@@ -34,14 +34,13 @@ use bootloader::{BootInfo, entry_point};
 
 use asm_os::init;
 use asm_os::api::{system, vga};
-use asm_os::auxiliary::logger::LogLevel;
+use asm_os::aux::logger::LogLevel;
 #[cfg(test)]
-use asm_os::auxiliary::testing::serene_test_panic_handler;
+use asm_os::aux::testing::serene_test_panic_handler;
 #[cfg(not(test))]
 use asm_os::hlt_loop;
 use asm_os::kernel::task::{Executor, Task};
 use asm_os::println;
-use asm_os::usr;
 
 entry_point!(kernel_main);
 
@@ -53,16 +52,10 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     println!("{}", format_args!("{: ^99}", "\x1B[34mWelcome to \x1B[35masmOS\x1B[34m!\x1B[0m"));
     println!();
 
-    loop {
-        println!("{}", system::uptime());
-        system::sleep(1.0);
-    }
-
     #[cfg(test)]
     test_main();
 
     let mut executor = Executor::new();
-    executor.spawn(Task::new(usr::shell::main()));
     executor.run();
 }
 

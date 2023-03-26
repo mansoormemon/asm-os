@@ -27,11 +27,12 @@ use pc_keyboard::layouts::{Azerty, Dvorak104Key, Us104Key};
 use spin::Mutex;
 use x86_64::instructions::port::Port;
 
-use crate::api;
+use crate::{api, omneity};
 use crate::api::keyboard::Layout;
 use crate::devices::console;
 use crate::encodings::ASCII;
 use crate::encodings::Charset;
+use crate::kernel::apic::local::LAPIC_EOI;
 use crate::kernel::idt;
 use crate::kernel::idt::IRQ;
 
@@ -133,7 +134,7 @@ pub(crate) fn init(lyt: Layout) -> Result<(), ()> {
     set_layout(lyt);
 
     // Set interrupt handler.
-    // idt::set_irq_handler(IRQ::Keyboard, keyboard_irq_handler);
+    idt::set_irq_handler(IRQ::Keyboard, keyboard_irq_handler);
 
     Ok(())
 }
@@ -200,4 +201,11 @@ fn keyboard_irq_handler() {
             }
         }
     }
+    let base: usize = 0x180fee00000;
+
+    let dest = LAPIC_EOI + base;
+    let dest = dest as *mut u32;
+
+    unsafe { core::ptr::write_volatile(dest, 0); }
+
 }

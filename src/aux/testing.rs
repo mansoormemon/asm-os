@@ -24,7 +24,7 @@ use core::any;
 use core::panic::PanicInfo;
 
 use crate::{serial_print, serial_println};
-use crate::auxiliary::emulator::qemu;
+use crate::aux::emulator::qemu;
 use crate::hlt_loop;
 
 ///////////////////

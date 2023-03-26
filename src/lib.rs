@@ -28,7 +28,7 @@
 #![feature(custom_test_frameworks)]
 #![feature(poll_ready)]
 #![feature(exclusive_range_pattern)]
-#![test_runner(crate::auxiliary::testing::serene_test_runner)]
+#![test_runner(crate::aux::testing::serene_test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
@@ -41,18 +41,17 @@ use bootloader::BootInfo;
 use bootloader::entry_point;
 use x86_64::instructions;
 
-use crate::auxiliary::logger;
-use crate::auxiliary::logger::{LogLevel, LogResult};
+use crate::aux::logger;
+use crate::aux::logger::{LogLevel, LogResult};
 #[cfg(test)]
-use crate::auxiliary::testing::serene_test_panic_handler;
+use crate::aux::testing::serene_test_panic_handler;
 
 pub mod api;
-pub mod auxiliary;
+pub mod aux;
 pub mod encodings;
 pub mod devices;
 pub mod drivers;
 pub mod kernel;
-pub mod usr;
 
 #[cfg(test)]
 entry_point!(test_kernel_main);
@@ -86,7 +85,6 @@ pub fn init(boot_info: &'static BootInfo, log_lvl: LogLevel) {
     drivers::keyboard::init(api::keyboard::Layout::QWERTY).log("Keyboard", "initialized");
 
     kernel::apic::init().log("APIC", "initialized");
-
 }
 
 /// Halts execution of CPU until next interrupt.
